@@ -15,12 +15,9 @@ const IC=[
   {id:3,title:"Desk Stretches",icon:"🧘",unit:"session",goal:1,color:"#F9A8D4",desc:"3 min stretch break, every hour",active:true,type:"habit",physioNote:"Prolonged sitting increases lumbar disc pressure by 40%. These micro-breaks are proven to reduce neck & lower back pain and boost afternoon energy.",endDate:"2026-12-31"},
   {id:4,title:"Mindfulness",icon:"🌿",unit:"mins",goal:20,color:"#FCD34D",desc:"20 mins mindfulness daily",active:true,type:"count",endDate:"2026-12-31"},
 ];
-const ILB=[{uid:4,pts:9200,str:5},{uid:1,pts:8750,str:4},{uid:3,pts:7400,str:7},{uid:2,pts:6800,str:3}];
-const IF=[
-  {id:1,uid:2,cid:1,val:11200,note:"New record! 🏃",ts:N-7200000,comments:[{uid:1,text:"Beast mode!"}],rx:{"🔥":[3,4],"💪":[1]}},
-  {id:2,uid:3,cid:3,val:1,note:"Shoulders feel so much better!",ts:N-18000000,comments:[],rx:{"💪":[2],"👏":[4]}},
-];
-const IM={"1-2":[{from:1,text:"Great job today!",ts:N-200000}]};
+const ILB=[];
+const IF=[];
+const IM={};
 const IP={weight:[{date:"Mar 17",val:74.2},{date:"Mar 18",val:73.8},{date:"Mar 23",val:72.5}],mood:[{date:"Mar 17",val:3},{date:"Mar 20",val:5},{date:"Mar 23",val:5}],notes:["Feeling great after the run!"]};
 
 // ── HELPERS ──
@@ -95,9 +92,6 @@ const FeedTab=({feed,setFeed,challenges,users,cu,notify,checked,setChecked,tips=
   ].sort((a,b)=>b._ts-a._ts);
 
   return<div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-      <div style={{fontWeight:700,fontSize:17}}>Activity Feed</div>
-    </div>
     {!checked&&<CheckIn onDone={()=>{setChecked(true);notify("🌅 Check-in saved!");}}/>}
     {items.map(item=>{
       if(item._kind==="tip") return<TipCard key={`tip-${item.id}`} tip={item}/>;

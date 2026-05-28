@@ -14,17 +14,16 @@ export default function Signup({ onSwitch, inviteCode, inviteTeamId }) {
     if (!name || !email || !password) return
     setLoading(true)
     setError('')
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
+    // Pass name + role as metadata so the DB trigger auto-creates the profile
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name, role } }
+    })
     if (signUpError) { setError(signUpError.message); setLoading(false); return }
-    if (data.user) {
-      await supabase.from('profiles').insert({
-        id: data.user.id,
-        name,
-        role,
-        team_id: inviteTeamId || null,
-        color: '#6EE7B7',
-        is_admin: false,
-      })
+    // If invite, update team_id after signup
+    if (data.user && inviteTeamId) {
+      await supabase.from('profiles').update({ team_id: inviteTeamId }).eq('id', data.user.id)
     }
     setDone(true)
     setLoading(false)

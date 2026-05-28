@@ -5,11 +5,12 @@ import App from './App'
 import Login from './Login'
 import Signup from './Signup'
 import Join from './Join'
+import Landing from './Landing'
 
 function Root() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [showSignup, setShowSignup] = useState(false)
+  const [screen, setScreen] = useState('landing') // 'landing' | 'login' | 'signup'
 
   // Check for invite link in URL
   const path = window.location.pathname
@@ -36,10 +37,11 @@ function Root() {
   // If someone visits /join/xxxxx show the join page
   if (joinCode) return <Join code={joinCode}/>
 
-  // If not logged in show login or signup
+  // If not logged in show landing → login or signup
   if (!session) {
-    if (showSignup) return <Signup onSwitch={()=>setShowSignup(false)}/>
-    return <Login onSwitch={()=>setShowSignup(true)}/>
+    if (screen === 'signup') return <Signup onSwitch={()=>setScreen('login')} inviteCode={null} inviteTeamId={null}/>
+    if (screen === 'login') return <Login onSwitch={()=>setScreen('signup')}/>
+    return <Landing onSignup={()=>setScreen('signup')} onLogin={()=>setScreen('login')}/>
   }
 
   // Logged in — show the main app

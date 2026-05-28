@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { supabase } from './supabase';
 
 // ── CONSTANTS ──
@@ -9,12 +9,7 @@ const BP_COLORS={general:"#6EE7B7",lower_back:"#F9A8D4",shoulders:"#93C5FD",neck
 const BP_LABELS={general:"General",lower_back:"Lower Back",shoulders:"Shoulders",neck:"Neck & Upper Back",hips:"Hips",wrists:"Wrists",eyes:"Eyes"};
 
 // ── INITIAL DATA ──
-const IC=[
-  {id:1,title:"10K Steps",icon:"👟",unit:"steps",goal:10000,color:"#6EE7B7",desc:"10,000 steps every day",active:true,type:"count",endDate:"2026-12-31"},
-  {id:2,title:"2L Water",icon:"💧",unit:"ml",goal:2000,color:"#93C5FD",desc:"Stay hydrated daily",active:true,type:"count",endDate:"2026-12-31"},
-  {id:3,title:"Desk Stretches",icon:"🧘",unit:"session",goal:1,color:"#F9A8D4",desc:"3 min stretch break, every hour",active:true,type:"habit",physioNote:"Prolonged sitting increases lumbar disc pressure by 40%. These micro-breaks are proven to reduce neck & lower back pain and boost afternoon energy.",endDate:"2026-12-31"},
-  {id:4,title:"Mindfulness",icon:"🌿",unit:"mins",goal:20,color:"#FCD34D",desc:"20 mins mindfulness daily",active:true,type:"count",endDate:"2026-12-31"},
-];
+const IC=[];
 const ILB=[];
 const IF=[];
 const IM={};
@@ -75,7 +70,20 @@ const AiTab=({challenges,setChallenges,notify})=>{
   const QP=["Morning movement challenge","Mindfulness for stressed teams","Desk-friendly exercises","Summer hydration push"];
   const dc={Easy:"#6EE7B7",Medium:"#FCD34D",Hard:"#F9A8D4"};
   const gen=async()=>{if(!prompt.trim())return;setLoading(true);setSugg([]);setErr("");try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});const data=await r.json();if(data.error)throw new Error(data.error);setSugg(data.suggestions);}catch(e){setErr("Couldn't generate — try again!");}setLoading(false);};
-  const launch=(s,i)=>{const today=new Date().toISOString().split("T")[0],end=new Date(Date.now()+7*864e5).toISOString().split("T")[0];setChallenges(c=>[...c,{id:Date.now(),title:s.title,icon:s.icon,unit:s.unit,goal:s.goal,color:s.color,desc:s.desc,active:true,type:"count",startDate:today,endDate:end}]);setDone(d=>({...d,[i]:true}));notify(`🚀 "${s.title}" launched!`);};
+  const launch=async(s,i)=>{
+    const today=new Date().toISOString().split("T")[0],end=new Date(Date.now()+7*864e5).toISOString().split("T")[0];
+    const{data,error}=await supabase.from('challenges').insert({
+      title:s.title,icon:s.icon,unit:s.unit,goal:s.goal,color:s.color,
+      active:true,type:'count',start_date:today,end_date:end
+    }).select().single();
+    if(!error&&data){
+      setChallenges(c=>[...c,{...data,desc:data.description,physioNote:data.physio_note,endDate:data.end_date}]);
+      setDone(d=>({...d,[i]:true}));
+      notify(`🚀 "${data.title}" launched!`);
+    } else {
+      notify("❌ Couldn't launch — try again.");
+    }
+  };
   return<div><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><span style={{fontWeight:700,fontSize:17}}>✨ AI Challenges</span><Pill color="#C4B5FD" text="CLAUDE"/></div><div style={{fontSize:12,color:"#888",marginBottom:14}}>Describe your team's goals and get challenge ideas instantly.</div><div style={{background:"#ffffff08",border:"1px solid #ffffff12",borderRadius:16,padding:16,marginBottom:14}}><div style={{fontWeight:700,marginBottom:8,fontSize:12}}>Quick prompts</div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10}}>{QP.map(p=><button key={p} onClick={()=>setPrompt(p)} style={{background:prompt===p?"#C4B5FD22":"transparent",border:`1px solid ${prompt===p?"#C4B5FD55":"#ffffff15"}`,borderRadius:20,padding:"4px 10px",fontSize:11,color:prompt===p?"#C4B5FD":"#888",fontWeight:prompt===p?700:400}}>{p}</button>)}</div><textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Or describe your own…" rows={3} style={{resize:"none",width:"100%",marginBottom:10}}/><button onClick={gen} disabled={loading||!prompt.trim()} style={{width:"100%",padding:"11px",borderRadius:10,border:"1px solid #C4B5FD33",background:prompt.trim()?"#C4B5FD22":"#ffffff08",color:prompt.trim()?"#C4B5FD":"#555",fontWeight:700,fontSize:13}}>{loading?"✨ Generating…":"✨ Generate Ideas"}</button>{err&&<div style={{marginTop:8,fontSize:12,color:"#F9A8D4",textAlign:"center"}}>{err}</div>}</div>{sugg.map((s,i)=><div key={i} style={{background:"#ffffff08",border:`1px solid ${s.color}33`,borderRadius:16,padding:16,marginBottom:10}}><div style={{display:"flex",gap:10,alignItems:"flex-start"}}><div style={{width:44,height:44,borderRadius:12,background:`${s.color}20`,border:`1px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{s.icon}</div><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:3}}><span style={{fontWeight:700,color:s.color}}>{s.title}</span><Pill color={dc[s.difficulty]||"#888"} text={s.difficulty}/></div><div style={{fontSize:12,color:"#888",marginBottom:4}}>{s.desc}</div><div style={{fontSize:11,color:"#666"}}>🎯 {s.goal?.toLocaleString()} {s.unit}</div></div></div><button onClick={()=>launch(s,i)} disabled={done[i]} style={{marginTop:10,width:"100%",background:done[i]?"#6EE7B722":`${s.color}18`,border:`1px solid ${done[i]?"#6EE7B744":s.color+"44"}`,color:done[i]?"#6EE7B7":s.color,padding:"8px",borderRadius:9,fontWeight:700,fontSize:12,opacity:done[i]?.7:1}}>{done[i]?"✅ Launched!":"🚀 Launch"}</button></div>)}{!loading&&sugg.length===0&&<div style={{textAlign:"center",padding:"36px 0",color:"#555"}}><div style={{fontSize:40,marginBottom:10}}>✨</div><div style={{fontSize:13}}>Pick a prompt or write your own above.</div></div>}</div>;
 };
 
@@ -97,7 +105,7 @@ const FeedTab=({feed,setFeed,challenges,users,cu,notify,checked,setChecked,tips=
       if(item._kind==="tip") return<TipCard key={`tip-${item.id}`} tip={item}/>;
       const post=item;
       const u=users.find(x=>x.id===post.uid)||{name:"Unknown",color:"#888"};
-      const ch=challenges.find(x=>x.id===post.cid);
+      const ch=challenges.find(x=>String(x.id)===String(post.cid));
       if(!ch)return null;
       const isHabit=ch.type==="habit";
       return<div key={post.id} className="card" style={{marginBottom:12}}>
@@ -150,7 +158,8 @@ const ChalTab=({challenges,feed,cu,onLog})=>{
     <div style={{fontWeight:700,fontSize:17,marginBottom:14}}>Active Challenges</div>
     {a.map(ch=>{
       const isHabit=ch.type==="habit";
-      const myPosts=feed.filter(p=>p.uid===cu.id&&p.cid===ch.id);
+      // Only count this week's logs (weekly reset every Monday)
+      const myPosts=feed.filter(p=>p.uid===cu.id&&String(p.cid)===String(ch.id)&&new Date(p.ts)>=weekStart);
       const tot=myPosts.reduce((a,p)=>a+p.val,0);
       const pct=Math.min(1,isHabit?weekDays.filter(d=>myPosts.some(p=>new Date(p.ts).toDateString()===d)).length/5:tot/ch.goal);
       const doneToday=myPosts.some(p=>new Date(p.ts).toDateString()===todayStr());
@@ -262,12 +271,22 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
 
   const createCh=async()=>{
     if(!chF.title||!chF.goal)return;
+    const start=new Date().toISOString().split("T")[0];
     const end=new Date(Date.now()+7*864e5).toISOString().split("T")[0];
-    const newCh={id:Date.now(),...chF,goal:parseFloat(chF.goal),active:true,endDate:end};
-    setChallenges(c=>[...c,newCh]);
-    setChF({title:"",icon:"🏃",unit:"",goal:"",color:"#6EE7B7",type:"count",physioNote:""});
-    notify("✅ Challenge created!");
-    addNotif("challenge",`New challenge: ${chF.title}`);
+    const{data,error}=await supabase.from('challenges').insert({
+      title:chF.title,icon:chF.icon,unit:chF.unit,
+      goal:parseFloat(chF.goal),color:chF.color,type:chF.type,
+      physio_note:chF.physioNote,active:true,
+      start_date:start,end_date:end
+    }).select().single();
+    if(!error&&data){
+      setChallenges(c=>[...c,{...data,desc:data.description,physioNote:data.physio_note,endDate:data.end_date}]);
+      setChF({title:"",icon:"🏃",unit:"",goal:"",color:"#6EE7B7",type:"count",physioNote:""});
+      notify("✅ Challenge created!");
+      addNotif("challenge",`New challenge: ${data.title}`);
+    } else {
+      notify("❌ Couldn't save challenge — try again.");
+    }
   };
 
   const createTip=async()=>{
@@ -389,33 +408,39 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
           <div style={{fontWeight:700,color:ch.color,fontSize:13}}>{ch.title}</div>
           <div style={{fontSize:11,color:"#888"}}>{ch.type==="habit"?"Habit ✅":ch.goal?.toLocaleString()+" "+ch.unit}</div>
         </div>
-        <button onClick={()=>setChallenges(c=>c.map(x=>x.id===ch.id?{...x,active:!x.active}:x))} style={{background:`${ch.active?"#FCD34D":"#6EE7B7"}15`,border:`1px solid ${ch.active?"#FCD34D":"#6EE7B7"}33`,color:ch.active?"#FCD34D":"#6EE7B7",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700}}>{ch.active?"Pause":"Resume"}</button>
+        <button onClick={async()=>{await supabase.from('challenges').update({active:!ch.active}).eq('id',ch.id);setChallenges(c=>c.map(x=>x.id===ch.id?{...x,active:!x.active}:x));}} style={{background:`${ch.active?"#FCD34D":"#6EE7B7"}15`,border:`1px solid ${ch.active?"#FCD34D":"#6EE7B7"}33`,color:ch.active?"#FCD34D":"#6EE7B7",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700}}>{ch.active?"Pause":"Resume"}</button>
       </div>)}
     </div>}
   </div>;
 };
 
 // ── LOG MODAL ──
-const LogModal=({onClose,challenges,cu,setFeed,setLb,notify,initialChallenge})=>{
+const LogModal=({onClose,challenges,cu,setFeed,notify,initialChallenge})=>{
   const a=challenges.filter(c=>c.active);
   const [sel,setSel]=useState(initialChallenge||a[0]);
   const [val,setVal]=useState("");
   const [note,setNote]=useState("");
   const isHabit=sel?.type==="habit";
 
-  const submit=()=>{
+  const submit=async()=>{
     if(!sel)return;
     const v=isHabit?1:parseFloat(val);
     if(!isHabit&&(isNaN(v)||v<=0))return;
-    setFeed(f=>[{id:Date.now(),uid:cu.id,cid:sel.id,val:v,note,ts:Date.now(),comments:[],rx:{}},...f]);
-    setLb(l=>{
-      const pts=isHabit?100:v;
-      const ex=l.find(e=>e.uid===cu.id);
-      const nx=ex?l.map(e=>e.uid===cu.id?{...e,pts:e.pts+pts}:e):[...l,{uid:cu.id,pts,str:1}];
-      return[...nx].sort((a,b)=>b.pts-a.pts);
-    });
-    notify(`✅ ${sel.icon} Logged!`);
-    onClose();
+    const{data,error}=await supabase.from('activity_logs').insert({
+      user_id:cu.id,challenge_id:sel.id,value:v,note:note||null
+    }).select().single();
+    if(!error&&data){
+      setFeed(f=>[{
+        id:data.id,uid:data.user_id,cid:data.challenge_id,
+        val:data.value,note:data.note||'',
+        ts:new Date(data.created_at).getTime(),
+        comments:[],rx:{}
+      },...f]);
+      notify(`✅ ${sel.icon} Logged!`);
+      onClose();
+    } else {
+      notify("❌ Couldn't save — try again.");
+    }
   };
 
   return<Modal onClose={onClose}>
@@ -458,10 +483,20 @@ export default function App({ session }) {
   const [profileLoading,setProfileLoading]=useState(true);
   const [tab,setTab]=useState("feed");
   const [feed,setFeed]=useState(IF);
-  const [lb,setLb]=useState(ILB);
   const [msgs,setMsgs]=useState(IM);
   const [challenges,setChallenges]=useState(IC);
   const [users,setUsers]=useState([]);
+  // Leaderboard computed from feed + challenges (auto-updates when either changes)
+  const lb=useMemo(()=>{
+    const pts={};
+    feed.forEach(post=>{
+      const ch=challenges.find(c=>String(c.id)===String(post.cid));
+      if(!ch)return;
+      const p=ch.type==="habit"?100:(post.val||0);
+      pts[post.uid]=(pts[post.uid]||0)+p;
+    });
+    return Object.entries(pts).map(([uid,p])=>({uid,pts:p})).sort((a,b)=>b.pts-a.pts);
+  },[feed,challenges]);
   const [tips,setTips]=useState([]);
   const [showLog,setShowLog]=useState(null);
   const [showNotifs,setShowNotifs]=useState(false);
@@ -489,6 +524,34 @@ export default function App({ session }) {
       .then(({data})=>{ if(data) setTips(data); });
   },[]);
 
+  // Load challenges from Supabase
+  useEffect(()=>{
+    supabase.from('challenges').select('*').order('created_at',{ascending:true})
+      .then(({data})=>{
+        if(data) setChallenges(data.map(c=>({...c,desc:c.description,physioNote:c.physio_note,endDate:c.end_date})));
+      });
+  },[]);
+
+  // Load activity logs from Supabase (feeds the feed + leaderboard)
+  useEffect(()=>{
+    supabase.from('activity_logs').select('*').order('created_at',{ascending:false}).limit(200)
+      .then(({data})=>{
+        if(data) setFeed(data.map(log=>({
+          id:log.id,uid:log.user_id,cid:log.challenge_id,
+          val:log.value,note:log.note||'',
+          ts:new Date(log.created_at).getTime(),
+          comments:[],rx:{}
+        })));
+      });
+  },[]);
+
+  // Load all team profiles for leaderboard + DMs
+  useEffect(()=>{
+    if(!session)return;
+    supabase.from('profiles').select('*')
+      .then(({data})=>{ if(data) setUsers(data.filter(u=>u.id!==session.user.id)); });
+  },[session]);
+
   const notify=useCallback(msg=>{const id=Date.now();setToasts(ts=>[...ts,{id,msg}]);setTimeout(()=>setToasts(ts=>ts.filter(x=>x.id!==id)),3000);},[]);
   const addNotif=useCallback((type,text)=>setNotifs(n=>[{id:Date.now(),type,text,ts:Date.now(),read:false},...n]),[]);
   const handleTipCreated=useCallback(tip=>setTips(t=>[tip,...t]),[]);
@@ -510,7 +573,7 @@ export default function App({ session }) {
       {toasts.map(t=><div key={t.id} style={{background:"#13131f",border:"1px solid #6EE7B755",borderRadius:13,padding:"9px 18px",fontSize:13,color:"#6EE7B7",backdropFilter:"blur(12px)",whiteSpace:"nowrap",animation:"ti 3s ease both"}}>{t.msg}</div>)}
     </div>
     {showNotifs&&<><div style={{position:"fixed",inset:0,zIndex:799}} onClick={()=>setShowNotifs(false)}/><NotifsPanel notifs={notifs} onClose={()=>setShowNotifs(false)} onRead={id=>setNotifs(n=>n.map(x=>x.id===id?{...x,read:true}:x))}/></>}
-    {showLog&&<LogModal onClose={()=>setShowLog(null)} challenges={challenges} cu={cu} setFeed={setFeed} setLb={setLb} notify={notify} initialChallenge={typeof showLog==="object"?showLog:null}/>}
+    {showLog&&<LogModal onClose={()=>setShowLog(null)} challenges={challenges} cu={cu} setFeed={setFeed} notify={notify} initialChallenge={typeof showLog==="object"?showLog:null}/>}
 
     <div style={{maxWidth:480,margin:"0 auto",minHeight:"100vh",display:"flex",flexDirection:"column"}}>
       <div style={{padding:"13px 13px 0",position:"sticky",top:0,zIndex:40,background:`linear-gradient(to bottom,${th.bg} 85%,transparent)`}}>

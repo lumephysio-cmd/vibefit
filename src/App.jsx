@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import PhysioTab from './PhysioTab';
 import LbTab from './LbTab';
 import { BADGE_DEFS } from './badges';
+import InsightsSection from './InsightsSection';
 
 // ── CONSTANTS ──
 const TC=["#6EE7B7","#93C5FD","#F9A8D4","#FCD34D","#C4B5FD","#FB923C","#34D399","#F472B6"];
@@ -433,6 +434,102 @@ const ErgonomicsCheck=({cu,notify,awardBadge})=>{
   </div>;
 };
 
+// ── PULSE CARD (shown in feed) ──
+const PULSE_EMOJIS=['😫','😕','😐','🙂','😄'];
+const PulseCard=({pulse,cu,onVoted})=>{
+  const[voted,setVoted]=useState(false);
+  const[voting,setVoting]=useState(false);
+  const vote=async(score)=>{
+    if(voting||voted)return;
+    setVoting(true);
+    const{error}=await supabase.from('pulse_responses').insert({pulse_id:pulse.id,user_id:cu.id,score});
+    if(!error){setVoted(true);if(onVoted)onVoted();}
+    setVoting(false);
+  };
+  if(voted) return(
+    <div style={{background:"linear-gradient(135deg,#C4B5FD10,#6EE7B708)",border:"1px solid #C4B5FD22",borderRadius:16,padding:"16px",marginBottom:12,textAlign:"center"}}>
+      <div style={{fontSize:28,marginBottom:6}}>💙</div>
+      <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Response recorded!</div>
+      <div style={{fontSize:12,color:"#888"}}>Thanks for helping shape the team's wellbeing data.</div>
+    </div>
+  );
+  return(
+    <div style={{background:"linear-gradient(135deg,#C4B5FD10,#6EE7B708)",border:"1px solid #C4B5FD33",borderRadius:16,padding:"16px",marginBottom:12}}>
+      <div style={{display:"flex",gap:7,alignItems:"center",marginBottom:2}}>
+        <span style={{fontSize:16}}>🌡️</span>
+        <div style={{fontWeight:800,fontSize:13,color:"#C4B5FD"}}>WEEKLY PULSE</div>
+        <span style={{fontSize:9,background:"#6EE7B722",color:"#6EE7B7",border:"1px solid #6EE7B733",borderRadius:20,padding:"1px 7px",fontWeight:700}}>ANONYMOUS</span>
+      </div>
+      <div style={{fontWeight:700,fontSize:15,color:"#e8e8f0",marginBottom:4}}>{pulse.question}</div>
+      <div style={{fontSize:11,color:"#888",marginBottom:14}}>Your vote is completely anonymous — the admin only sees the team average.</div>
+      <div style={{display:"flex",gap:8,justifyContent:"space-between"}}>
+        {PULSE_EMOJIS.map((em,i)=>(
+          <button key={i} onClick={()=>vote(i+1)} disabled={voting} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"10px 4px",borderRadius:12,border:"1px solid #ffffff18",background:"#ffffff06",cursor:"pointer",transition:"all .15s"}}>
+            <span style={{fontSize:26}}>{em}</span>
+            <span style={{fontSize:9,color:"#555"}}>{i+1}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ── SURVEY CARD (shown in feed) ──
+const SURVEY_QS=[
+  {key:"workload",icon:"⚡",color:"#FB923C",q:"My workload feels manageable this week"},
+  {key:"balance",icon:"⚖️",color:"#6EE7B7",q:"I have a healthy work-life balance"},
+  {key:"connection",icon:"🤝",color:"#93C5FD",q:"I feel connected and supported by my team"},
+  {key:"physical",icon:"💪",color:"#C4B5FD",q:"My physical workspace and comfort is good"},
+  {key:"overall",icon:"🌟",color:"#FCD34D",q:"Overall I feel good about my wellbeing at work"},
+];
+const AGREE=['Strongly Disagree','Disagree','Neutral','Agree','Strongly Agree'];
+const SurveyCard=({survey,cu,onDone})=>{
+  const[step,setStep]=useState(0);
+  const[answers,setAnswers]=useState({});
+  const[done,setDone]=useState(false);
+  const[saving,setSaving]=useState(false);
+  const cur=SURVEY_QS[step];
+  const submit=async()=>{
+    if(Object.keys(answers).length<SURVEY_QS.length)return;
+    setSaving(true);
+    await supabase.from('survey_responses').insert({survey_id:survey.id,user_id:cu.id,scores:answers});
+    setDone(true);setSaving(false);if(onDone)onDone();
+  };
+  if(done) return(
+    <div style={{background:"linear-gradient(135deg,#93C5FD10,#6EE7B708)",border:"1px solid #93C5FD22",borderRadius:16,padding:"18px",marginBottom:12,textAlign:"center"}}>
+      <div style={{fontSize:28,marginBottom:8}}>✅</div>
+      <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Survey complete!</div>
+      <div style={{fontSize:12,color:"#888"}}>Your anonymous responses help the team thrive. Thank you!</div>
+    </div>
+  );
+  return(
+    <div style={{background:"linear-gradient(135deg,#93C5FD10,#6EE7B708)",border:"1px solid #93C5FD33",borderRadius:16,padding:"16px",marginBottom:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <span style={{fontSize:16}}>📋</span>
+          <span style={{fontWeight:800,fontSize:12,color:"#93C5FD"}}>{survey.title||"WELLBEING SURVEY"}</span>
+          <span style={{fontSize:9,background:"#6EE7B722",color:"#6EE7B7",border:"1px solid #6EE7B733",borderRadius:20,padding:"1px 7px",fontWeight:700}}>ANONYMOUS</span>
+        </div>
+        <div style={{display:"flex",gap:4}}>{SURVEY_QS.map((_,i)=><div key={i} style={{width:18,height:3,borderRadius:2,background:i<step?"#93C5FD":i===step?"#93C5FD88":"#ffffff15"}}/>)}</div>
+      </div>
+      <div style={{fontWeight:700,fontSize:14,color:"#e8e8f0",marginBottom:14,marginTop:8}}>{cur.icon} {cur.q}</div>
+      <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
+        {[1,2,3,4,5].map(v=>{const sel=answers[cur.key]===v;return(
+          <button key={v} onClick={()=>setAnswers(a=>({...a,[cur.key]:v}))} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:11,border:`1px solid ${sel?cur.color+"44":"#ffffff12"}`,background:sel?`${cur.color}18`:"#ffffff05",textAlign:"left"}}>
+            <div style={{width:24,height:24,borderRadius:"50%",background:sel?`${cur.color}33`:"#ffffff0f",border:`2px solid ${sel?cur.color:"#ffffff18"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,color:sel?cur.color:"#555",flexShrink:0}}>{v}</div>
+            <span style={{fontSize:12,color:sel?cur.color:"#888",fontWeight:sel?700:400}}>{AGREE[v-1]}</span>
+            {sel&&<span style={{marginLeft:"auto",color:cur.color,fontSize:13}}>✓</span>}
+          </button>
+        );})}
+      </div>
+      {step<SURVEY_QS.length-1
+        ?<button onClick={()=>setStep(s=>s+1)} disabled={!answers[cur.key]} style={{width:"100%",padding:"11px",borderRadius:11,border:`1px solid ${answers[cur.key]?"#93C5FD44":"#ffffff10"}`,background:answers[cur.key]?"#93C5FD18":"#ffffff05",color:answers[cur.key]?"#93C5FD":"#555",fontWeight:800,fontSize:14,opacity:answers[cur.key]?1:.5}}>Next →</button>
+        :<button onClick={submit} disabled={saving||!answers[cur.key]} style={{width:"100%",padding:"11px",borderRadius:11,border:"1px solid #93C5FD44",background:"#93C5FD22",color:"#93C5FD",fontWeight:800,fontSize:14}}>{saving?"Submitting…":"Submit Survey ✅"}</button>
+      }
+    </div>
+  );
+};
+
 // ── AI TAB ──
 const AiTab=({challenges,setChallenges,notify,cu})=>{
   const [prompt,setPrompt]=useState("");const [loading,setLoading]=useState(false);const [sugg,setSugg]=useState([]);const [err,setErr]=useState("");const [done,setDone]=useState({});
@@ -779,7 +876,7 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
 
   const SECS=[
     ["overview","Overview","🏠"],["analytics","Analytics","📊"],
-    ["digest","Digest","📧"],
+    ["insights","Insights","🧠"],["digest","Digest","📧"],
     ["tips","Physio Tips","💡"],["teams","Teams","👥"],["challenges","Challenges","🏆"],
     ...(cu.is_super_admin?[["superadmin","Super Admin","🌐"]]:[])]
 
@@ -828,7 +925,7 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
         <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:14}}>
           {[[totalMembers,"Members","#6EE7B7"],[teams.length,"Teams","#93C5FD"],[challenges.filter(c=>c.active).length,"Active","#F9A8D4"]].map(([v,l,c])=><div key={l} className="card" style={{flex:"1 1 80px",padding:12}}><div style={{fontWeight:800,fontSize:22,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}
         </div>
-        <div className="card"><div style={{fontWeight:700,marginBottom:9}}>Quick Actions</div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}><Btn color="#93C5FD" text="📊 Analytics" onClick={()=>setSec("analytics")}/><Btn color="#6EE7B7" text="💡 Post Tip" onClick={()=>setSec("tips")}/><Btn color="#F9A8D4" text="🏆 Challenge" onClick={()=>setSec("challenges")}/><Btn color="#FCD34D" text="📧 Digest" onClick={()=>setSec("digest")}/></div></div>
+        <div className="card"><div style={{fontWeight:700,marginBottom:9}}>Quick Actions</div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}><Btn color="#93C5FD" text="📊 Analytics" onClick={()=>setSec("analytics")}/><Btn color="#C4B5FD" text="🧠 Insights" onClick={()=>setSec("insights")}/><Btn color="#6EE7B7" text="💡 Post Tip" onClick={()=>setSec("tips")}/><Btn color="#F9A8D4" text="🏆 Challenge" onClick={()=>setSec("challenges")}/><Btn color="#FCD34D" text="📧 Digest" onClick={()=>setSec("digest")}/></div></div>
       </div>;
     })()}
 
@@ -893,6 +990,8 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
       </>}
       {!analyticsLoading&&!analytics&&<div style={{textAlign:"center",padding:"30px 0",color:"#888",fontSize:13}}><div style={{fontSize:32,marginBottom:8}}>📊</div>No activity data yet — get your team logging!</div>}
     </div>}
+
+    {sec==="insights"&&<InsightsSection cu={cu} session={session} users={users}/>}
 
     {sec==="digest"&&(()=>{
       // Build weekly digest preview from available data
@@ -1209,6 +1308,10 @@ export default function App({ session }) {
   ]);
   const [teams,setTeams]=useState([]);
   const [badges,setBadges]=useState([]);
+  const [activePulse,setActivePulse]=useState(null);
+  const [myPulseVoted,setMyPulseVoted]=useState(false);
+  const [activeSurvey,setActiveSurvey]=useState(null);
+  const [mySurveyDone,setMySurveyDone]=useState(false);
 
   // Load profile
   useEffect(()=>{
@@ -1285,6 +1388,36 @@ export default function App({ session }) {
     supabase.from('user_badges').select('*')
       .then(({data})=>{ if(data) setBadges(data); });
   },[cu?.id]);
+
+  // Load active pulse + check if user already voted this week
+  useEffect(()=>{
+    if(!cu?.id||!cu?.company_id)return;
+    const weekStart=new Date();weekStart.setDate(weekStart.getDate()-weekStart.getDay());weekStart.setHours(0,0,0,0);
+    supabase.from('mood_pulses').select('*').eq('company_id',cu.company_id).eq('is_active',true)
+      .gte('week_of',weekStart.toISOString().slice(0,10)).order('created_at',{ascending:false}).limit(1)
+      .then(async({data})=>{
+        if(data&&data[0]){
+          setActivePulse(data[0]);
+          const{data:vote}=await supabase.from('pulse_responses').select('id').eq('pulse_id',data[0].id).eq('user_id',cu.id).limit(1);
+          if(vote&&vote.length)setMyPulseVoted(true);
+        }
+      });
+  },[cu?.id,cu?.company_id]);
+
+  // Load active survey + check if user already responded
+  useEffect(()=>{
+    if(!cu?.id||!cu?.company_id)return;
+    const period=new Date().toISOString().slice(0,7);
+    supabase.from('wellbeing_surveys').select('*').eq('company_id',cu.company_id).eq('is_active',true)
+      .eq('period',period).order('created_at',{ascending:false}).limit(1)
+      .then(async({data})=>{
+        if(data&&data[0]){
+          setActiveSurvey(data[0]);
+          const{data:resp}=await supabase.from('survey_responses').select('id').eq('survey_id',data[0].id).eq('user_id',cu.id).limit(1);
+          if(resp&&resp.length)setMySurveyDone(true);
+        }
+      });
+  },[cu?.id,cu?.company_id]);
 
   const notify=useCallback(msg=>{const id=Date.now();setToasts(ts=>[...ts,{id,msg}]);setTimeout(()=>setToasts(ts=>ts.filter(x=>x.id!==id)),3000);},[]);
   const addNotif=useCallback((type,text)=>setNotifs(n=>[{id:Date.now(),type,text,ts:Date.now(),read:false},...n]),[]);
@@ -1404,6 +1537,8 @@ export default function App({ session }) {
               <button onClick={()=>setShowLog(true)} style={{background:"#6EE7B722",border:"1px solid #6EE7B744",color:"#6EE7B7",borderRadius:9,padding:"6px 12px",fontSize:12,fontWeight:700,flexShrink:0}}>Log 📊</button>
             </div>
           )}
+          {activePulse&&!myPulseVoted&&<PulseCard pulse={activePulse} cu={cu} onVoted={()=>setMyPulseVoted(true)}/>}
+          {activeSurvey&&!mySurveyDone&&<SurveyCard survey={activeSurvey} cu={cu} onDone={()=>setMySurveyDone(true)}/>}
           <FeedTab feed={feed} setFeed={setFeed} challenges={challenges} users={allUsers} cu={cu} notify={notify} tips={tips}/>
         </>}
         {tab==="challenges"&&<ChalTab challenges={challenges} feed={feed} cu={cu} onLog={ch=>setShowLog(ch)}/>}

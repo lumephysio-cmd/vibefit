@@ -145,10 +145,30 @@ function Root() {
   const joinCode = joinMatch ? joinMatch[1] : null
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setLoading(false)
-    })
+    const url = new URL(window.location.href)
+    const tokenHash  = url.searchParams.get('token_hash')
+    const type       = url.searchParams.get('type')           // 'email', 'recovery', etc.
+    const hashParams = new URLSearchParams(url.hash.slice(1))
+    const accessToken = hashParams.get('access_token')
+
+    const cleanUrl = () => window.history.replaceState({}, '', '/')
+
+    if (tokenHash && type) {
+      // PKCE flow — exchange the token hash Supabase embedded in the link
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type })
+        .then(({ data, error }) => {
+          if (!error && data.session) setSession(data.session)
+          cleanUrl()
+          setLoading(false)
+        })
+    } else {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session)
+        // If there was an access_token in the hash (implicit flow), clean it up
+        if (accessToken || url.searchParams.has('code')) cleanUrl()
+        setLoading(false)
+      })
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)

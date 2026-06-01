@@ -9,15 +9,29 @@ export default function Signup({ onSwitch, inviteCode, inviteTeamId, inviteCompa
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const [resent, setResent] = useState(false)
+  const [resending, setResending] = useState(false)
+
+  const handleResend = async () => {
+    setResending(true)
+    const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin
+    await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: siteUrl } })
+    setResent(true)
+    setResending(false)
+  }
 
   const handleSignup = async () => {
     if (!name || !email || !password) return
     setLoading(true)
     setError('')
+    const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name, role } }
+      options: {
+        data: { name, role },
+        emailRedirectTo: siteUrl,
+      }
     })
     if (signUpError) { setError(signUpError.message); setLoading(false); return }
     if (data.user) {
@@ -39,7 +53,29 @@ export default function Signup({ onSwitch, inviteCode, inviteTeamId, inviteCompa
       <div style={{width:340,background:'linear-gradient(135deg,#ffffff09,#ffffff04)',border:'1px solid #ffffff12',borderRadius:20,padding:32,textAlign:'center'}}>
         <div style={{fontSize:48,marginBottom:16}}>📧</div>
         <div style={{fontWeight:800,fontSize:20,color:'#e8e8f0',marginBottom:8}}>Check your email!</div>
-        <div style={{fontSize:13,color:'#888',lineHeight:1.6}}>We sent a confirmation link to <span style={{color:'#6EE7B7'}}>{email}</span>. Click it to activate your account then come back and sign in.</div>
+        <div style={{fontSize:13,color:'#888',lineHeight:1.6,marginBottom:20}}>
+          We sent a confirmation link to{' '}
+          <span style={{color:'#6EE7B7'}}>{email}</span>.
+          Click it to activate your account, then come back and sign in.
+        </div>
+        {resent ? (
+          <div style={{fontSize:13,color:'#6EE7B7',fontWeight:700}}>✅ New link sent!</div>
+        ) : (
+          <div style={{fontSize:12,color:'#666'}}>
+            Didn't get it?{' '}
+            <span
+              onClick={!resending ? handleResend : undefined}
+              style={{color:'#6EE7B7',cursor:resending?'default':'pointer',fontWeight:700,opacity:resending?0.5:1}}
+            >
+              {resending ? 'Sending…' : 'Resend verification email'}
+            </span>
+          </div>
+        )}
+        <div style={{marginTop:20,borderTop:'1px solid #ffffff10',paddingTop:16}}>
+          <span onClick={onSwitch} style={{fontSize:13,color:'#888',cursor:'pointer'}}>
+            Already verified? <span style={{color:'#6EE7B7',fontWeight:700}}>Sign in →</span>
+          </span>
+        </div>
       </div>
     </div>
   )

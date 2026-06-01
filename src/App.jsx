@@ -318,7 +318,7 @@ const AiTab=({challenges,setChallenges,notify})=>{
 };
 
 // ── FEED TAB ──
-const FeedTab=({feed,setFeed,challenges,users,cu,notify,checked,setChecked,tips=[],lastCheckin,onCheckin})=>{
+const FeedTab=({feed,setFeed,challenges,users,cu,notify,tips=[]})=>{
   const [ct,setCt]=useState({});
   const react=(pid,emoji)=>setFeed(f=>f.map(p=>{if(p.id!==pid)return p;const cur=p.rx[emoji]||[],has=cur.includes(cu.id);return{...p,rx:{...p.rx,[emoji]:has?cur.filter(x=>x!==cu.id):[...cur,cu.id]}};}));
   const comment=pid=>{const t=ct[pid];if(!t?.trim())return;setFeed(f=>f.map(p=>p.id!==pid?p:{...p,comments:[...p.comments,{uid:cu.id,text:t}]}));setCt(c=>({...c,[pid]:""}));};
@@ -330,8 +330,6 @@ const FeedTab=({feed,setFeed,challenges,users,cu,notify,checked,setChecked,tips=
   ].sort((a,b)=>b._ts-a._ts);
 
   return<div>
-    {!checked&&<CheckIn onDone={onCheckin}/>}
-    {checked&&lastCheckin&&<ReadinessCard checkin={lastCheckin}/>}
     {items.map(item=>{
       if(item._kind==="tip") return<TipCard key={`tip-${item.id}`} tip={item}/>;
       const post=item;
@@ -461,9 +459,13 @@ return<div><div style={{fontWeight:700,fontSize:17,marginBottom:14}}>Direct Mess
 </div>;};
 
 // ── PROFILE TAB ──
-const ProfileTab=({cu,lb,pd,setPd,notify})=>{const [nw,setNw]=useState("");const [nm,setNm]=useState(3);const [nn,setNn]=useState("");const myLB=lb.find(e=>e.uid===cu.id);const myR=lb.findIndex(e=>e.uid===cu.id)+1;
+const ProfileTab=({cu,lb,pd,setPd,notify,checked,onCheckin,lastCheckin})=>{const [nw,setNw]=useState("");const [nm,setNm]=useState(3);const [nn,setNn]=useState("");const myLB=lb.find(e=>e.uid===cu.id);const myR=lb.findIndex(e=>e.uid===cu.id)+1;
 const save=()=>{const today=new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"});if(nw){const v=parseFloat(nw);if(!isNaN(v))setPd(p=>({...p,weight:[...p.weight.slice(-6),{date:today,val:v}]}))}setPd(p=>({...p,mood:[...p.mood.slice(-6),{date:today,val:nm}]}));if(nn.trim())setPd(p=>({...p,notes:[...p.notes,nn]}));setNw("");setNn("");setNm(3);notify("🔒 Saved!");};
-return<div><div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14}}><Av u={cu} s={50}/><div><div style={{fontWeight:800,fontSize:18}}>{cu.name}</div><div style={{fontSize:12,color:"#888"}}>{cu.role}{cu.is_admin?" · 👑 Admin":""}</div><div style={{fontSize:10,color:"#6EE7B7",marginTop:2}}>🔒 Private</div></div></div>
+return<div>
+  {/* 🔒 Private daily check-in — only you see this */}
+  {!checked&&<CheckIn onDone={onCheckin}/>}
+  {checked&&lastCheckin&&<ReadinessCard checkin={lastCheckin}/>}
+  <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14}}><Av u={cu} s={50}/><div><div style={{fontWeight:800,fontSize:18}}>{cu.name}</div><div style={{fontSize:12,color:"#888"}}>{cu.role}{cu.is_admin?" · 👑 Admin":""}</div><div style={{fontSize:10,color:"#6EE7B7",marginTop:2}}>🔒 Private</div></div></div>
 <div style={{display:"flex",gap:7,marginBottom:10}}>{[["#"+(myR||"–"),"Rank","#6EE7B7"],[(myLB?.str||0)+"🔥","Streak","#FCD34D"],[(myLB?.pts||0).toLocaleString(),"Points","#93C5FD"]].map(([v,l,c])=><div key={l} className="card" style={{flex:1,textAlign:"center",padding:12}}><div style={{fontWeight:800,fontSize:16,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}</div>
 <ReadinessHistoryCard cu={cu}/><div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>⚖️ Weight</div><div style={{fontSize:12,color:"#6EE7B7",fontWeight:700}}>{pd.weight[pd.weight.length-1]?.val} kg</div></div><Spk sid="wt" data={pd.weight} color="#6EE7B7"/></div>
 <div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>😊 Mood</div><div style={{fontSize:12,color:"#F9A8D4",fontWeight:700}}>{pd.mood[pd.mood.length-1]?.val}/5</div></div><Spk sid="md" data={pd.mood} color="#F9A8D4"/></div>
@@ -854,14 +856,14 @@ export default function App({ session }) {
             <div style={{fontWeight:700,fontSize:17}}>Activity Feed</div>
             <Btn color="#6EE7B7" text="+ Log" onClick={()=>setShowLog(true)}/>
           </div>
-          <FeedTab feed={feed} setFeed={setFeed} challenges={challenges} users={allUsers} cu={cu} notify={notify} checked={checked} setChecked={setChecked} tips={tips} lastCheckin={lastCheckin} onCheckin={handleCheckin}/>
+          <FeedTab feed={feed} setFeed={setFeed} challenges={challenges} users={allUsers} cu={cu} notify={notify} tips={tips}/>
         </>}
         {tab==="challenges"&&<ChalTab challenges={challenges} feed={feed} cu={cu} onLog={ch=>setShowLog(ch)}/>}
         {tab==="leaderboard"&&<LbTab lb={lb} users={allUsers} challenges={challenges} cu={cu}/>}
         {tab==="messages"&&<MsgTab cu={cu} users={allUsers} messages={msgs} setMessages={setMsgs}/>}
         {tab==="ai"&&<AiTab challenges={challenges} setChallenges={setChallenges} notify={notify}/>}
         {tab==="admin"&&cu?.is_admin&&<AdminTab cu={cu} users={allUsers} setUsers={setUsers} challenges={challenges} setChallenges={setChallenges} notify={notify} addNotif={addNotif} session={session} onTipCreated={handleTipCreated}/>}
-        {tab==="profile"&&<ProfileTab cu={cu} lb={lb} pd={pd} setPd={setPd} notify={notify}/>}
+        {tab==="profile"&&<ProfileTab cu={cu} lb={lb} pd={pd} setPd={setPd} notify={notify} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin}/>}
       </div>
     </div>
   </>;

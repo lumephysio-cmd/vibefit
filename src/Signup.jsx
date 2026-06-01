@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
 
-export default function Signup({ onSwitch, inviteCode, inviteTeamId }) {
+export default function Signup({ onSwitch, inviteCode, inviteTeamId, inviteCompanyId, inviteIsAdmin }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -14,16 +14,21 @@ export default function Signup({ onSwitch, inviteCode, inviteTeamId }) {
     if (!name || !email || !password) return
     setLoading(true)
     setError('')
-    // Pass name + role as metadata so the DB trigger auto-creates the profile
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { name, role } }
     })
     if (signUpError) { setError(signUpError.message); setLoading(false); return }
-    // If invite, update team_id after signup
-    if (data.user && inviteTeamId) {
-      await supabase.from('profiles').update({ team_id: inviteTeamId }).eq('id', data.user.id)
+    if (data.user) {
+      // Build profile update object
+      const updates = {}
+      if (inviteTeamId) updates.team_id = inviteTeamId
+      if (inviteCompanyId) updates.company_id = inviteCompanyId
+      if (inviteIsAdmin) updates.is_admin = true
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('profiles').update(updates).eq('id', data.user.id)
+      }
     }
     setDone(true)
     setLoading(false)
@@ -44,7 +49,7 @@ export default function Signup({ onSwitch, inviteCode, inviteTeamId }) {
       <div style={{width:340,background:'linear-gradient(135deg,#ffffff09,#ffffff04)',border:'1px solid #ffffff12',borderRadius:20,padding:32}}>
         <div style={{textAlign:'center',marginBottom:28}}>
           <div style={{fontWeight:800,fontSize:28,background:'linear-gradient(90deg,#6EE7B7,#93C5FD)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',marginBottom:6}}>VIBEFIT</div>
-          <div style={{fontSize:13,color:'#888'}}>{inviteCode ? 'You\'ve been invited! Create your account' : 'Create your account'}</div>
+          <div style={{fontSize:13,color:'#888'}}>{inviteCode ? "You've been invited! Create your account" : 'Create your account'}</div>
         </div>
         {error && <div style={{background:'#F9A8D420',border:'1px solid #F9A8D444',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#F9A8D4',marginBottom:14}}>{error}</div>}
         <div style={{marginBottom:12}}>

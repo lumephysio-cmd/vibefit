@@ -294,8 +294,144 @@ const ReadinessHistoryCard=({cu})=>{
   </div>;
 };
 
+// ── ERGONOMICS CHECK ──
+const ErgonomicsCheck=({cu,notify})=>{
+  const [existing,setExisting]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [step,setStep]=useState(0);
+  const [retaking,setRetaking]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [ans,setAns]=useState({workstation_type:null,screen_height:null,screen_distance:null,seating_position:null,pain_areas:[]});
+  useEffect(()=>{
+    supabase.from('ergonomics_assessments').select('*').eq('user_id',cu.id)
+      .order('created_at',{ascending:false}).limit(1)
+      .then(({data})=>{if(data&&data.length)setExisting(data[0]);setLoading(false);});
+  },[cu.id]);
+  const STEPS=[
+    {key:'workstation_type',q:'What best describes your workstation?',icon:'🖥️',opts:[
+      {v:'desktop',l:'Desktop + monitor',i:'🖥️'},{v:'laptop',l:'Laptop only',i:'💻'},
+      {v:'standing_desk',l:'Standing desk',i:'🏗️'},{v:'flexible',l:'Flexible / hot-desk',i:'☁️'}]},
+    {key:'screen_height',q:'Where is the top of your screen relative to your eyes?',icon:'📺',opts:[
+      {v:'below',l:'Below eye level',i:'⬇️',n:'looking down'},{v:'eye_level',l:'At eye level',i:'👀',n:'ideal'},
+      {v:'above',l:'Above eye level',i:'⬆️',n:'looking up'}]},
+    {key:'screen_distance',q:'How far is your screen from your eyes?',icon:'📏',opts:[
+      {v:'too_close',l:'Less than 50cm',i:'😰',n:'Too close'},{v:'ideal',l:'50 – 70cm',i:'✅',n:'Ideal range'},
+      {v:'too_far',l:'More than 70cm',i:'🔍',n:'Too far'}]},
+    {key:'seating_position',q:'How would you describe your typical seated posture?',icon:'🪑',opts:[
+      {v:'slumped',l:'Slumped / slouched',i:'😮‍💨'},{v:'upright',l:'Upright, back supported',i:'💪'},
+      {v:'forward_lean',l:'Leaning forward',i:'🏋️'},{v:'varies',l:'Changes often',i:'🔄'}]},
+    {key:'pain_areas',q:'Any areas of discomfort at work? (select all)',icon:'🩺',multi:true,opts:[
+      {v:'none',l:'None — all good!',i:'🎉'},{v:'neck',l:'Neck / upper back',i:'🤔'},
+      {v:'lower_back',l:'Lower back',i:'😣'},{v:'shoulders',l:'Shoulders',i:'🏋️'},
+      {v:'wrists',l:'Wrists / hands',i:'✋'},{v:'eyes',l:'Eye strain',i:'👁️'}]},
+  ];
+  const calcRisk=a=>{
+    let s=0;
+    if(a.workstation_type==='laptop')s+=2;if(a.workstation_type==='flexible')s+=1;
+    if(a.screen_height==='above'||a.screen_height==='below')s+=2;
+    if(a.screen_distance==='too_close')s+=2;
+    if(a.seating_position==='slumped')s+=3;if(a.seating_position==='forward_lean')s+=2;
+    s+=(a.pain_areas||[]).filter(x=>x!=='none').length*1.5;
+    return s>=7?'high':s>=4?'moderate':'low';
+  };
+  const genRecs=a=>{
+    const r=[];
+    if(a.screen_height==='below')r.push({i:'📺',t:'Raise your screen',d:"Looking down compresses cervical vertebrae. Use a monitor stand or books so the screen top aligns with eye level."});
+    if(a.screen_height==='above')r.push({i:'⬇️',t:'Lower your monitor',d:"Looking up strains posterior neck muscles. Bring the screen down so your natural gaze falls slightly downward."});
+    if(a.screen_distance==='too_close')r.push({i:'📏',t:'Move your screen back',d:"Under 50cm causes eye strain and forward head posture. Aim for arm's length — 50–70cm from your face."});
+    if(a.workstation_type==='laptop')r.push({i:'💻',t:'Get an external keyboard',d:"Laptop-only work forces sustained neck flexion. An external keyboard + laptop stand dramatically reduces neck and shoulder load."});
+    if(a.seating_position==='slumped')r.push({i:'🪑',t:'Reset your posture hourly',d:"Slumping unevenly loads your spinal discs. Set a 30-min timer: feet flat, hips at 90°, lumbar curve gently supported."});
+    if(a.seating_position==='forward_lean')r.push({i:'🔄',t:'Reduce forward reach',d:"Leaning toward your screen raises disc pressure 3×. Move your keyboard closer so elbows stay relaxed at 90°."});
+    if((a.pain_areas||[]).includes('wrists'))r.push({i:'✋',t:'Neutral wrist position',d:"Keep wrists flat — not angled up or down. Avoid resting on the wrist rest while actively typing; use it only for pauses."});
+    if((a.pain_areas||[]).includes('eyes'))r.push({i:'👁️',t:'20-20-20 rule',d:"Every 20 minutes, look at something 20 feet away for 20 seconds. This is the evidence-based gold standard for digital eye strain."});
+    if(r.length<2)r.push({i:'🚶',t:'Movement break every hour',d:"Even with great ergonomics, sustained sitting reduces spinal disc nutrition by up to 25%. Stand or walk 2 minutes each hour."});
+    if(r.length<2)r.push({i:'💧',t:'Stay hydrated',d:"Spinal discs are 80% water. Dehydration accelerates disc degeneration — aim for 2L/day and sip consistently throughout the day."});
+    return r.slice(0,4);
+  };
+  const save=async()=>{
+    setSaving(true);
+    const risk=calcRisk(ans);const recs=genRecs(ans);
+    const payload={user_id:cu.id,...ans,pain_areas:ans.pain_areas||[],risk_level:risk,recommendations:recs,updated_at:new Date().toISOString()};
+    if(existing){
+      const{data}=await supabase.from('ergonomics_assessments').update(payload).eq('id',existing.id).select().single();
+      if(data){setExisting(data);notify("✅ Ergonomics assessment updated!");}
+    } else {
+      const{data}=await supabase.from('ergonomics_assessments').insert(payload).select().single();
+      if(data){setExisting(data);notify("✅ Ergonomics assessment saved!");}
+    }
+    setRetaking(false);setSaving(false);
+  };
+  const riskCfg={low:{col:"#6EE7B7",label:"Low Risk",icon:"✅"},moderate:{col:"#FCD34D",label:"Moderate Risk",icon:"⚠️"},high:{col:"#F87171",label:"High Risk",icon:"🚨"}};
+  const wrap={background:"linear-gradient(135deg,#C4B5FD10,#6EE7B708)",border:"1px solid #C4B5FD25",borderRadius:18,padding:18,marginBottom:14};
+  if(loading)return null;
+  // Show results if we have an assessment and not retaking
+  if(existing&&!retaking){
+    const risk=existing.risk_level||'low';const cfg=riskCfg[risk]||riskCfg.low;
+    const recs=existing.recommendations||[];
+    return<div style={wrap}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <div style={{fontWeight:700,fontSize:13}}>🪑 Ergonomics Assessment</div>
+        <button onClick={()=>{setStep(0);setAns({workstation_type:null,screen_height:null,screen_distance:null,seating_position:null,pain_areas:[]});setRetaking(true);}} style={{background:"#ffffff08",border:"1px solid #ffffff15",color:"#888",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700}}>Retake</button>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+        <div style={{width:52,height:52,borderRadius:14,background:`${cfg.col}20`,border:`2px solid ${cfg.col}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>{cfg.icon}</div>
+        <div><div style={{fontWeight:800,fontSize:15,color:cfg.col}}>{cfg.label}</div><div style={{fontSize:11,color:"#888",marginTop:1}}>Worksite ergonomics · by Dr. Brooke 👩‍⚕️</div></div>
+      </div>
+      <div style={{fontSize:11,fontWeight:700,color:"#888",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Top Recommendations</div>
+      {recs.map((rec,i)=><div key={i} style={{background:"#ffffff07",borderRadius:11,padding:"10px 12px",marginBottom:8,display:"flex",gap:9,alignItems:"flex-start"}}>
+        <span style={{fontSize:18,flexShrink:0}}>{rec.i}</span>
+        <div><div style={{fontWeight:700,fontSize:12,marginBottom:3,color:"#d4d4d4"}}>{rec.t}</div><div style={{fontSize:11,color:"#888",lineHeight:1.55}}>{rec.d}</div></div>
+      </div>)}
+    </div>;
+  }
+  // Show questionnaire
+  const cur=STEPS[step];
+  const isLast=step===STEPS.length-1;
+  const curVal=ans[cur?.key];
+  const canNext=cur?.multi?(ans.pain_areas||[]).length>0:!!curVal;
+  if(step>=STEPS.length){
+    const risk=calcRisk(ans);const cfg=riskCfg[risk];
+    return<div style={{...wrap,textAlign:"center"}}>
+      <div style={{fontSize:36,marginBottom:6}}>{cfg.icon}</div>
+      <div style={{fontWeight:800,fontSize:16,color:cfg.col,marginBottom:4}}>{cfg.label}</div>
+      <div style={{fontSize:12,color:"#888",marginBottom:16}}>Based on your responses, here are your personalised recommendations.</div>
+      {genRecs(ans).map((r,i)=><div key={i} style={{background:"#ffffff07",borderRadius:10,padding:"9px 12px",marginBottom:8,textAlign:"left",display:"flex",gap:8}}>
+        <span style={{fontSize:16,flexShrink:0}}>{r.i}</span>
+        <div><div style={{fontWeight:700,fontSize:12,color:"#d4d4d4",marginBottom:2}}>{r.t}</div><div style={{fontSize:11,color:"#888",lineHeight:1.5}}>{r.d}</div></div>
+      </div>)}
+      <button onClick={save} disabled={saving} style={{width:"100%",marginTop:10,padding:"11px",borderRadius:11,border:"1px solid #C4B5FD44",background:"#C4B5FD18",color:"#C4B5FD",fontWeight:800,fontSize:14}}>{saving?"Saving…":"💾 Save Assessment"}</button>
+    </div>;
+  }
+  return<div style={wrap}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+      <div style={{fontWeight:800,fontSize:13}}>🪑 Ergonomics Check</div>
+      <div style={{display:"flex",gap:3}}>{STEPS.map((_,i)=><div key={i} style={{width:18,height:3,borderRadius:2,background:i<step?"#C4B5FD":"#ffffff15"}}/>)}</div>
+    </div>
+    <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>{cur.q}</div>
+    <div style={{display:"flex",flexDirection:"column",gap:7}}>
+      {cur.opts.map(o=>{
+        const sel=cur.multi?(ans.pain_areas||[]).includes(o.v):ans[cur.key]===o.v;
+        return<button key={o.v} onClick={()=>{
+          if(cur.multi){
+            if(o.v==='none'){setAns(a=>({...a,pain_areas:['none']}));}
+            else{setAns(a=>{const prev=(a.pain_areas||[]).filter(x=>x!=='none');const next=prev.includes(o.v)?prev.filter(x=>x!==o.v):[...prev,o.v];return{...a,pain_areas:next};});}
+          }else{
+            setAns(a=>({...a,[cur.key]:o.v}));
+            if(!cur.multi)setTimeout(()=>setStep(s=>s+1),200);
+          }
+        }} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:11,border:`1px solid ${sel?"#C4B5FD44":"#ffffff12"}`,background:sel?"#C4B5FD18":"#ffffff05",textAlign:"left"}}>
+          <span style={{fontSize:20,flexShrink:0}}>{o.i}</span>
+          <div><div style={{fontWeight:700,fontSize:13,color:sel?"#C4B5FD":"#d4d4d4"}}>{o.l}</div>{o.n&&<div style={{fontSize:10,color:"#888"}}>{o.n}</div>}</div>
+          {sel&&<span style={{marginLeft:"auto",color:"#C4B5FD",fontSize:14}}>✓</span>}
+        </button>;
+      })}
+    </div>
+    {cur.multi&&<button onClick={()=>setStep(s=>s+1)} disabled={!canNext} style={{width:"100%",marginTop:12,padding:"11px",borderRadius:11,border:`1px solid ${canNext?"#C4B5FD44":"#ffffff10"}`,background:canNext?"#C4B5FD18":"#ffffff05",color:canNext?"#C4B5FD":"#555",fontWeight:800,fontSize:14,opacity:canNext?1:.5}}>Next →</button>}
+  </div>;
+};
+
 // ── AI TAB ──
-const AiTab=({challenges,setChallenges,notify})=>{
+const AiTab=({challenges,setChallenges,notify,cu})=>{
   const [prompt,setPrompt]=useState("");const [loading,setLoading]=useState(false);const [sugg,setSugg]=useState([]);const [err,setErr]=useState("");const [done,setDone]=useState({});
   const QP=["Morning movement challenge","Mindfulness for stressed teams","Desk-friendly exercises","Summer hydration push"];
   const dc={Easy:"#6EE7B7",Medium:"#FCD34D",Hard:"#F9A8D4"};
@@ -304,7 +440,8 @@ const AiTab=({challenges,setChallenges,notify})=>{
     const today=new Date().toISOString().split("T")[0],end=new Date(Date.now()+7*864e5).toISOString().split("T")[0];
     const{data,error}=await supabase.from('challenges').insert({
       title:s.title,icon:s.icon,unit:s.unit,goal:s.goal,color:s.color,
-      active:true,type:'count',start_date:today,end_date:end
+      active:true,type:'count',start_date:today,end_date:end,
+      company_id:cu?.company_id||null
     }).select().single();
     if(!error&&data){
       setChallenges(c=>[...c,{...data,desc:data.description,physioNote:data.physio_note,endDate:data.end_date}]);
@@ -465,6 +602,7 @@ return<div>
   {/* 🔒 Private daily check-in — only you see this */}
   {!checked&&<CheckIn onDone={onCheckin}/>}
   {checked&&lastCheckin&&<ReadinessCard checkin={lastCheckin}/>}
+  <ErgonomicsCheck cu={cu} notify={notify}/>
   <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14}}><Av u={cu} s={50}/><div><div style={{fontWeight:800,fontSize:18}}>{cu.name}</div><div style={{fontSize:12,color:"#888"}}>{cu.role}{cu.is_admin?" · 👑 Admin":""}</div><div style={{fontSize:10,color:"#6EE7B7",marginTop:2}}>🔒 Private</div></div></div>
 <div style={{display:"flex",gap:7,marginBottom:10}}>{[["#"+(myR||"–"),"Rank","#6EE7B7"],[(myLB?.str||0)+"🔥","Streak","#FCD34D"],[(myLB?.pts||0).toLocaleString(),"Points","#93C5FD"]].map(([v,l,c])=><div key={l} className="card" style={{flex:1,textAlign:"center",padding:12}}><div style={{fontWeight:800,fontSize:16,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}</div>
 <ReadinessHistoryCard cu={cu}/><div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>⚖️ Weight</div><div style={{fontSize:12,color:"#6EE7B7",fontWeight:700}}>{pd.weight[pd.weight.length-1]?.val} kg</div></div><Spk sid="wt" data={pd.weight} color="#6EE7B7"/></div>
@@ -483,23 +621,63 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
   const [newTeam,setNewTeam]=useState({name:"",emoji:"👥",color:"#6EE7B7"});
   const [generating,setGenerating]=useState(false);
   const [savingTip,setSavingTip]=useState(false);
+  // Analytics
+  const [analytics,setAnalytics]=useState(null);
+  const [analyticsLoading,setAnalyticsLoading]=useState(false);
+  // Super admin
+  const [companies,setCompanies]=useState([]);
+  const [newCo,setNewCo]=useState({name:"",emoji:"🏢",color:"#6EE7B7"});
+  const [creatingCo,setCreatingCo]=useState(false);
+  const [adminInviteLink,setAdminInviteLink]=useState({});
 
   useEffect(()=>{
-    supabase.from('teams').select('*').then(({data})=>{ if(data) setTeams(data); });
-  },[]);
+    const q=supabase.from('teams').select('*');
+    (cu.is_super_admin?q:q.eq('company_id',cu.company_id))
+      .then(({data})=>{ if(data) setTeams(data); });
+  },[cu.company_id]);
+
+  useEffect(()=>{
+    if(sec!=='analytics'||!cu.company_id)return;
+    setAnalyticsLoading(true);
+    supabase.rpc('get_company_analytics',{company_uuid:cu.company_id})
+      .then(({data})=>{ if(data) setAnalytics(data); setAnalyticsLoading(false); });
+  },[sec,cu.company_id]);
+
+  useEffect(()=>{
+    if(sec!=='superadmin'||!cu.is_super_admin)return;
+    supabase.from('companies').select('*, profiles(count)').then(({data})=>{ if(data) setCompanies(data); });
+  },[sec,cu.is_super_admin]);
 
   const createTeam=async()=>{
     if(!newTeam.name.trim())return;
-    const {data,error}=await supabase.from('teams').insert({name:newTeam.name,emoji:newTeam.emoji,color:newTeam.color}).select().single();
+    const {data,error}=await supabase.from('teams').insert({name:newTeam.name,emoji:newTeam.emoji,color:newTeam.color,company_id:cu.company_id}).select().single();
     if(!error&&data){setTeams(t=>[...t,data]);setNewTeam({name:"",emoji:"👥",color:"#6EE7B7"});notify(`✅ Team "${data.name}" created!`);}
   };
 
   const generateInviteLink=async(teamId)=>{
     setGenerating(true);
     const code=Math.random().toString(36).slice(2,10);
-    const {error}=await supabase.from('invite_links').insert({team_id:teamId,code,created_by:session.user.id,active:true});
+    const {error}=await supabase.from('invite_links').insert({team_id:teamId,code,created_by:session.user.id,active:true,company_id:cu.company_id,invite_type:'member'});
     if(!error){const link=`${window.location.origin}/join/${code}`;setInviteLink(link);notify("✅ Invite link created!");}
     setGenerating(false);
+  };
+
+  const createCompany=async()=>{
+    if(!newCo.name.trim())return;
+    setCreatingCo(true);
+    const{data,error}=await supabase.from('companies').insert({name:newCo.name,emoji:newCo.emoji,color:newCo.color,created_by:session.user.id}).select().single();
+    if(!error&&data){setCompanies(c=>[...c,data]);setNewCo({name:"",emoji:"🏢",color:"#6EE7B7"});notify(`✅ Company "${data.name}" created!`);}
+    setCreatingCo(false);
+  };
+
+  const generateAdminInvite=async(companyId)=>{
+    const code=Math.random().toString(36).slice(2,10);
+    const{error}=await supabase.from('invite_links').insert({company_id:companyId,code,created_by:session.user.id,active:true,invite_type:'admin'});
+    if(!error){
+      const link=`${window.location.origin}/join/${code}`;
+      setAdminInviteLink(m=>({...m,[companyId]:link}));
+      notify("✅ Admin invite created!");
+    }
   };
 
   const createCh=async()=>{
@@ -510,7 +688,7 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
       title:chF.title,icon:chF.icon,unit:chF.unit,
       goal:parseFloat(chF.goal),color:chF.color,type:chF.type,
       physio_note:chF.physioNote,active:true,
-      start_date:start,end_date:end
+      start_date:start,end_date:end,company_id:cu.company_id
     }).select().single();
     if(!error&&data){
       setChallenges(c=>[...c,{...data,desc:data.description,physioNote:data.physio_note,endDate:data.end_date}]);
@@ -528,7 +706,7 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
     const {data,error}=await supabase.from('physio_tips').insert({
       title:tipF.title,content:tipF.content,body_part:tipF.body_part,
       emoji:tipF.emoji,color:BP_COLORS[tipF.body_part]||"#6EE7B7",
-      author_id:session.user.id
+      author_id:session.user.id,company_id:cu.company_id
     }).select().single();
     if(!error&&data){
       onTipCreated(data);
@@ -540,17 +718,82 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
     setSavingTip(false);
   };
 
-  const SECS=[["overview","Overview","🏠"],["tips","Physio Tips","💡"],["teams","Teams","👥"],["challenges","Challenges","🏆"]];
+  const SECS=[
+    ["overview","Overview","🏠"],["analytics","Analytics","📊"],
+    ["tips","Physio Tips","💡"],["teams","Teams","👥"],["challenges","Challenges","🏆"],
+    ...(cu.is_super_admin?[["superadmin","Super Admin","🌐"]]:[])]
 
   return<div>
-    <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:12}}><span style={{fontWeight:700,fontSize:17}}>Admin Panel</span><Pill color="#C4B5FD" text="ADMIN"/></div>
+    <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:12}}><span style={{fontWeight:700,fontSize:17}}>Admin Panel</span><Pill color="#C4B5FD" text="ADMIN"/>{cu.is_super_admin&&<Pill color="#FCD34D" text="SUPER ADMIN"/>}</div>
     <div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto"}}>{SECS.map(([id,lbl,icon])=><button key={id} onClick={()=>setSec(id)} style={{flexShrink:0,padding:"7px 12px",borderRadius:10,border:`1px solid ${sec===id?"#C4B5FD55":"#ffffff15"}`,background:sec===id?"#C4B5FD18":"transparent",color:sec===id?"#C4B5FD":"#888",fontWeight:700,fontSize:12,display:"flex",gap:4,alignItems:"center"}}><span>{icon}</span>{lbl}</button>)}</div>
 
     {sec==="overview"&&<div>
       <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:14}}>
-        {[[users.length,"Members","#6EE7B7"],[teams.length,"Teams","#93C5FD"],[challenges.filter(c=>c.active).length,"Active","#F9A8D4"]].map(([v,l,c])=><div key={l} className="card" style={{flex:"1 1 80px",padding:12}}><div style={{fontWeight:800,fontSize:22,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}
+        {[[users.length+1,"Members","#6EE7B7"],[teams.length,"Teams","#93C5FD"],[challenges.filter(c=>c.active).length,"Active","#F9A8D4"]].map(([v,l,c])=><div key={l} className="card" style={{flex:"1 1 80px",padding:12}}><div style={{fontWeight:800,fontSize:22,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}
       </div>
-      <div className="card"><div style={{fontWeight:700,marginBottom:9}}>Quick Actions</div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}><Btn color="#6EE7B7" text="💡 Post Tip" onClick={()=>setSec("tips")}/><Btn color="#93C5FD" text="👥 New Team" onClick={()=>setSec("teams")}/><Btn color="#F9A8D4" text="🏆 Challenge" onClick={()=>setSec("challenges")}/></div></div>
+      <div className="card"><div style={{fontWeight:700,marginBottom:9}}>Quick Actions</div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}><Btn color="#93C5FD" text="📊 Analytics" onClick={()=>setSec("analytics")}/><Btn color="#6EE7B7" text="💡 Post Tip" onClick={()=>setSec("tips")}/><Btn color="#F9A8D4" text="🏆 Challenge" onClick={()=>setSec("challenges")}/></div></div>
+    </div>}
+
+    {sec==="analytics"&&<div>
+      <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>Company Analytics</div>
+      <div style={{fontSize:12,color:"#888",marginBottom:14}}>Last 7 days · {cu.company_id}</div>
+      {analyticsLoading&&<div style={{textAlign:"center",padding:"30px 0",color:"#888",fontSize:13}}>Loading analytics…</div>}
+      {!analyticsLoading&&analytics&&<>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+          {[
+            [analytics.active_users_week,"Active Users","this week","#6EE7B7","👥"],
+            [analytics.total_logs_week,"Activity Logs","this week","#93C5FD","📊"],
+            [analytics.checkin_count_week,"Check-Ins","this week","#F9A8D4","🌅"],
+            [analytics.avg_readiness_week!=null?analytics.avg_readiness_week+"":"–","Avg Readiness","this week","#FCD34D","⚡"],
+          ].map(([v,l,sub,c,ic])=><div key={l} className="card" style={{padding:14}}>
+            <div style={{fontSize:20,marginBottom:6}}>{ic}</div>
+            <div style={{fontWeight:800,fontSize:22,color:c,marginBottom:2}}>{v}</div>
+            <div style={{fontSize:11,fontWeight:700,color:"#bbb"}}>{l}</div>
+            <div style={{fontSize:10,color:"#555"}}>{sub}</div>
+          </div>)}
+        </div>
+        {analytics.total_members>0&&<div className="card" style={{marginBottom:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+            <div style={{fontWeight:700,fontSize:13}}>Participation Rate</div>
+            <div style={{fontSize:12,color:"#6EE7B7",fontWeight:700}}>{Math.round((analytics.active_users_week/analytics.total_members)*100)}%</div>
+          </div>
+          <div style={{background:"#ffffff08",borderRadius:6,height:8}}>
+            <div style={{width:`${Math.min(100,(analytics.active_users_week/analytics.total_members)*100)}%`,height:"100%",background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",borderRadius:6,transition:"width .6s"}}/>
+          </div>
+          <div style={{fontSize:11,color:"#888",marginTop:6}}>{analytics.active_users_week} of {analytics.total_members} members logged activity this week</div>
+        </div>}
+        {Array.isArray(analytics.daily_logs)&&analytics.daily_logs.length>0&&<div className="card">
+          <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>Daily Activity (7 days)</div>
+          <div style={{display:"flex",gap:4,alignItems:"flex-end",height:60}}>
+            {(()=>{const days=[];const today=new Date();for(let i=6;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+            const maxVal=Math.max(1,...analytics.daily_logs.map(d=>d.count||0));
+            return days.map((day,idx)=>{const entry=analytics.daily_logs.find(d=>d.log_date===day);const count=entry?.count||0;const h=Math.max(4,(count/maxVal)*52);const dow=new Date(day).toLocaleDateString('en',{weekday:'short'}).slice(0,1);
+            return<div key={day} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+              <div style={{fontSize:9,color:count>0?"#6EE7B7":"#555",fontWeight:700}}>{count>0?count:""}</div>
+              <div style={{width:"100%",height:h,background:count>0?"linear-gradient(180deg,#6EE7B7,#93C5FD40)":"#ffffff08",borderRadius:"3px 3px 0 0",transition:"height .4s"}}/>
+              <div style={{fontSize:9,color:"#555"}}>{dow}</div>
+            </div>;})})()}
+          </div>
+        </div>}
+        {!analyticsLoading&&analytics&&challenges.filter(c=>c.active).length>0&&<div className="card" style={{marginTop:8}}>
+          <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>Challenge Engagement</div>
+          {challenges.filter(c=>c.active).map(ch=>{
+            const logsForCh=(analytics.daily_logs||[]).length; // rough proxy
+            const uniqueUsers=Math.min(analytics.active_users_week,analytics.total_members);
+            const pct=analytics.total_members>0?Math.round((uniqueUsers/analytics.total_members)*100):0;
+            return<div key={ch.id} style={{marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                <div style={{fontSize:12,fontWeight:700}}>{ch.icon} {ch.title}</div>
+                <div style={{fontSize:11,color:ch.color,fontWeight:700}}>{pct}%</div>
+              </div>
+              <div style={{background:"#ffffff08",borderRadius:4,height:5}}>
+                <div style={{width:`${pct}%`,height:"100%",background:ch.color,borderRadius:4,transition:"width .6s"}}/>
+              </div>
+            </div>;
+          })}
+        </div>}
+      </>}
+      {!analyticsLoading&&!analytics&&<div style={{textAlign:"center",padding:"30px 0",color:"#888",fontSize:13}}><div style={{fontSize:32,marginBottom:8}}>📊</div>No activity data yet — get your team logging!</div>}
     </div>}
 
     {sec==="tips"&&<div>
@@ -644,6 +887,43 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
         <button onClick={async()=>{await supabase.from('challenges').update({active:!ch.active}).eq('id',ch.id);setChallenges(c=>c.map(x=>x.id===ch.id?{...x,active:!x.active}:x));}} style={{background:`${ch.active?"#FCD34D":"#6EE7B7"}15`,border:`1px solid ${ch.active?"#FCD34D":"#6EE7B7"}33`,color:ch.active?"#FCD34D":"#6EE7B7",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700}}>{ch.active?"Pause":"Resume"}</button>
       </div>)}
     </div>}
+
+    {sec==="superadmin"&&cu.is_super_admin&&<div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+        <span style={{fontWeight:700,fontSize:16}}>🌐 Super Admin</span>
+        <Pill color="#FCD34D" text="BROOKE ONLY"/>
+      </div>
+      <div style={{fontSize:12,color:"#888",marginBottom:14}}>Manage all companies on VibeFit. Each company is fully isolated.</div>
+
+      <div className="card" style={{marginBottom:14}}>
+        <div style={{fontWeight:700,marginBottom:10}}>Create New Company</div>
+        <div style={{display:"flex",gap:7,marginBottom:8}}>
+          <input placeholder="Company name" value={newCo.name} onChange={e=>setNewCo(c=>({...c,name:e.target.value}))} style={{flex:1}}/>
+          <input placeholder="🏢" value={newCo.emoji} onChange={e=>setNewCo(c=>({...c,emoji:e.target.value}))} style={{width:50}}/>
+        </div>
+        <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:5}}>Brand Color</div><div style={{display:"flex",gap:5}}>{TC.map(c=><button key={c} onClick={()=>setNewCo(co=>({...co,color:c}))} style={{width:24,height:24,borderRadius:"50%",background:c,border:`3px solid ${newCo.color===c?"#fff":"transparent"}`}}/>)}</div></div>
+        <Btn color="#FCD34D" text={creatingCo?"Creating…":"➕ Create Company"} style={{width:"100%"}} onClick={createCompany} disabled={creatingCo||!newCo.name.trim()}/>
+      </div>
+
+      <div style={{fontWeight:700,fontSize:13,marginBottom:8}}>{companies.length} Companies</div>
+      {companies.map(co=><div key={co.id} className="card" style={{marginBottom:10,borderColor:`${co.color}22`}}>
+        <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:10}}>
+          <div style={{width:44,height:44,borderRadius:13,background:`${co.color}22`,border:`1px solid ${co.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>{co.emoji}</div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:14}}>{co.name}</div>
+            <div style={{fontSize:11,color:"#888"}}>{co.plan||"starter"} plan · {co.subscription_status||"active"}</div>
+          </div>
+          {co.id===cu.company_id&&<Pill color="#6EE7B7" text="YOUR CO"/>}
+        </div>
+        <Btn color="#C4B5FD" text="👑 Generate Admin Invite" style={{width:"100%",fontSize:12}} onClick={()=>generateAdminInvite(co.id)}/>
+        {adminInviteLink[co.id]&&<div style={{marginTop:8,background:"#C4B5FD10",border:"1px solid #C4B5FD25",borderRadius:9,padding:"9px 12px"}}>
+          <div style={{fontSize:11,color:"#C4B5FD",fontWeight:700,marginBottom:5}}>📋 Admin invite link:</div>
+          <div style={{fontSize:10,color:"#aaa",wordBreak:"break-all",marginBottom:7}}>{adminInviteLink[co.id]}</div>
+          <button onClick={()=>{navigator.clipboard.writeText(adminInviteLink[co.id]);notify("📋 Copied!");}} style={{background:"#C4B5FD22",border:"1px solid #C4B5FD44",color:"#C4B5FD",borderRadius:7,padding:"4px 10px",fontSize:11,fontWeight:700}}>Copy Link</button>
+        </div>}
+      </div>)}
+      {companies.length===0&&<div style={{textAlign:"center",color:"#888",padding:"20px 0",fontSize:13}}>No companies yet. Create the first one above!</div>}
+    </div>}
   </div>;
 };
 
@@ -660,7 +940,8 @@ const LogModal=({onClose,challenges,cu,setFeed,notify,initialChallenge})=>{
     const v=isHabit?1:parseFloat(val);
     if(!isHabit&&(isNaN(v)||v<=0))return;
     const{data,error}=await supabase.from('activity_logs').insert({
-      user_id:cu.id,challenge_id:sel.id,value:v,note:note||null
+      user_id:cu.id,challenge_id:sel.id,value:v,note:note||null,
+      company_id:cu.company_id||null
     }).select().single();
     if(!error&&data){
       setFeed(f=>[{
@@ -752,23 +1033,29 @@ export default function App({ session }) {
       });
   },[session]);
 
-  // Load physio tips
+  // Load physio tips (company-scoped after profile loads)
   useEffect(()=>{
-    supabase.from('physio_tips').select('*').order('created_at',{ascending:false})
+    if(!cu)return;
+    const q=supabase.from('physio_tips').select('*').order('created_at',{ascending:false});
+    (cu.is_super_admin||!cu.company_id?q:q.eq('company_id',cu.company_id))
       .then(({data})=>{ if(data) setTips(data); });
-  },[]);
+  },[cu?.id]);
 
-  // Load challenges from Supabase
+  // Load challenges from Supabase (company-scoped)
   useEffect(()=>{
-    supabase.from('challenges').select('*').order('created_at',{ascending:true})
+    if(!cu)return;
+    const q=supabase.from('challenges').select('*').order('created_at',{ascending:true});
+    (cu.is_super_admin||!cu.company_id?q:q.eq('company_id',cu.company_id))
       .then(({data})=>{
         if(data) setChallenges(data.map(c=>({...c,desc:c.description,physioNote:c.physio_note,endDate:c.end_date})));
       });
-  },[]);
+  },[cu?.id]);
 
-  // Load activity logs from Supabase (feeds the feed + leaderboard)
+  // Load activity logs from Supabase (company-scoped)
   useEffect(()=>{
-    supabase.from('activity_logs').select('*').order('created_at',{ascending:false}).limit(200)
+    if(!cu)return;
+    const q=supabase.from('activity_logs').select('*').order('created_at',{ascending:false}).limit(200);
+    (cu.is_super_admin||!cu.company_id?q:q.eq('company_id',cu.company_id))
       .then(({data})=>{
         if(data) setFeed(data.map(log=>({
           id:log.id,uid:log.user_id,cid:log.challenge_id,
@@ -777,14 +1064,15 @@ export default function App({ session }) {
           comments:[],rx:{}
         })));
       });
-  },[]);
+  },[cu?.id]);
 
-  // Load all team profiles for leaderboard + DMs
+  // Load company members for leaderboard + DMs
   useEffect(()=>{
-    if(!session)return;
-    supabase.from('profiles').select('*')
-      .then(({data})=>{ if(data) setUsers(data.filter(u=>u.id!==session.user.id)); });
-  },[session]);
+    if(!cu)return;
+    const q=supabase.from('profiles').select('*');
+    (cu.is_super_admin||!cu.company_id?q:q.eq('company_id',cu.company_id))
+      .then(({data})=>{ if(data) setUsers(data.filter(u=>u.id!==cu.id)); });
+  },[cu?.id]);
 
   // Restore today's check-in on load (so the check-in widget doesn't re-appear)
   useEffect(()=>{
@@ -861,7 +1149,7 @@ export default function App({ session }) {
         {tab==="challenges"&&<ChalTab challenges={challenges} feed={feed} cu={cu} onLog={ch=>setShowLog(ch)}/>}
         {tab==="leaderboard"&&<LbTab lb={lb} users={allUsers} challenges={challenges} cu={cu}/>}
         {tab==="messages"&&<MsgTab cu={cu} users={allUsers} messages={msgs} setMessages={setMsgs}/>}
-        {tab==="ai"&&<AiTab challenges={challenges} setChallenges={setChallenges} notify={notify}/>}
+        {tab==="ai"&&<AiTab challenges={challenges} setChallenges={setChallenges} notify={notify} cu={cu}/>}
         {tab==="admin"&&cu?.is_admin&&<AdminTab cu={cu} users={allUsers} setUsers={setUsers} challenges={challenges} setChallenges={setChallenges} notify={notify} addNotif={addNotif} session={session} onTipCreated={handleTipCreated}/>}
         {tab==="profile"&&<ProfileTab cu={cu} lb={lb} pd={pd} setPd={setPd} notify={notify} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin}/>}
       </div>

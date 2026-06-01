@@ -3,22 +3,22 @@ import { supabase } from './supabase'
 import Signup from './Signup'
 
 export default function Join({ code }) {
-  const [team, setTeam] = useState(null)
+  const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [invalid, setInvalid] = useState(false)
 
   useEffect(() => {
     const fetchInvite = async () => {
-      const { data, error } = await supabase
+      const { data: invite, error } = await supabase
         .from('invite_links')
-        .select('*, teams(*)')
+        .select('*, teams(*), companies(*)')
         .eq('code', code)
         .eq('active', true)
         .single()
-      if (error || !data) {
+      if (error || !invite) {
         setInvalid(true)
       } else {
-        setTeam(data.teams)
+        setData(invite)
       }
       setLoading(false)
     }
@@ -41,16 +41,46 @@ export default function Join({ code }) {
     </div>
   )
 
+  // Admin invite (company-level)
+  const isAdminInvite = data.invite_type === 'admin'
+  const company = data.companies
+  const team = data.teams
+
+  // Determine display entity
+  const displayEntity = isAdminInvite ? company : (team || company)
+  const displayColor = displayEntity?.color || '#6EE7B7'
+  const displayEmoji = displayEntity?.emoji || '🏢'
+  const displayName = displayEntity?.name || 'your team'
+
   return (
     <div style={{minHeight:'100vh',background:'#080810',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
       <div style={{width:340}}>
         <div style={{textAlign:'center',marginBottom:20}}>
-          <div style={{width:64,height:64,borderRadius:18,background:`${team.color}22`,border:`2px solid ${team.color}44`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,margin:'0 auto 12px'}}>{team.emoji}</div>
-          <div style={{fontWeight:800,fontSize:18,color:'#e8e8f0',marginBottom:4}}>You're invited to join</div>
-          <div style={{fontWeight:800,fontSize:22,color:team.color}}>{team.name}</div>
-          <div style={{fontSize:13,color:'#888',marginTop:6}}>on VibeFit — create your account below</div>
+          <div style={{width:64,height:64,borderRadius:18,background:`${displayColor}22`,border:`2px solid ${displayColor}44`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,margin:'0 auto 12px'}}>{displayEmoji}</div>
+          {isAdminInvite ? (
+            <>
+              <div style={{fontWeight:800,fontSize:18,color:'#e8e8f0',marginBottom:4}}>You're invited as an Admin of</div>
+              <div style={{fontWeight:800,fontSize:22,color:displayColor}}>{displayName}</div>
+              <div style={{fontSize:13,color:'#888',marginTop:6}}>on VibeFit — create your admin account below</div>
+              <div style={{marginTop:10,background:'#C4B5FD15',border:'1px solid #C4B5FD33',borderRadius:10,padding:'8px 14px',display:'inline-block'}}>
+                <span style={{fontSize:12,color:'#C4B5FD',fontWeight:700}}>👑 Company Admin Access</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{fontWeight:800,fontSize:18,color:'#e8e8f0',marginBottom:4}}>You're invited to join</div>
+              <div style={{fontWeight:800,fontSize:22,color:displayColor}}>{displayName}</div>
+              <div style={{fontSize:13,color:'#888',marginTop:6}}>on VibeFit — create your account below</div>
+            </>
+          )}
         </div>
-        <Signup inviteCode={code} inviteTeamId={team.id} onSwitch={()=>{}}/>
+        <Signup
+          inviteCode={code}
+          inviteTeamId={team?.id || null}
+          inviteCompanyId={data.company_id}
+          inviteIsAdmin={isAdminInvite}
+          onSwitch={()=>{}}
+        />
       </div>
     </div>
   )

@@ -90,7 +90,7 @@ export default function Signup({ onSwitch, inviteCode, inviteTeamId, inviteCompa
         {error && <div style={{background:'#F9A8D420',border:'1px solid #F9A8D444',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#F9A8D4',marginBottom:14}}>{error}</div>}
         <div style={{marginBottom:12}}>
           <div style={{fontSize:12,color:'#888',marginBottom:5}}>Full Name</div>
-          <input value={name} onChange={e=>setName(e.target.value)} placeholder="Brooke Cassar" style={{width:'100%',background:'#ffffff08',border:'1px solid #ffffff15',color:'#e8e8f0',borderRadius:10,padding:'10px 14px',fontSize:14,outline:'none'}}/>
+          <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name here" style={{width:'100%',background:'#ffffff08',border:'1px solid #ffffff15',color:'#e8e8f0',borderRadius:10,padding:'10px 14px',fontSize:14,outline:'none'}}/>
         </div>
         <div style={{marginBottom:12}}>
           <div style={{fontSize:12,color:'#888',marginBottom:5}}>Email</div>

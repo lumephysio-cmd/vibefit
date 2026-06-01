@@ -715,11 +715,98 @@ const ChalTab=({challenges,feed,cu,onLog})=>{
 };
 
 // ── MESSAGES TAB ──
-const MsgTab=({cu,users,messages,setMessages})=>{const [dm,setDm]=useState(null);const [txt,setTxt]=useState("");const ref=useRef(null);const key=(a,b)=>[Math.min(a,b),Math.max(a,b)].join("-");useEffect(()=>{if(ref.current)ref.current.scrollTop=ref.current.scrollHeight;},[dm,messages]);const send=()=>{if(!txt.trim()||!dm)return;const k=key(cu.id,dm.id);setMessages(m=>({...m,[k]:[...(m[k]||[]),{from:cu.id,text:txt,ts:Date.now()}]}));setTxt("");};
-if(dm)return<div style={{display:"flex",flexDirection:"column",height:"70vh"}}><div style={{display:"flex",alignItems:"center",gap:9,marginBottom:12}}><button onClick={()=>setDm(null)} style={{background:"transparent",border:"none",color:"#6EE7B7",fontSize:20,padding:0}}>←</button><Av u={dm} s={32}/><div style={{fontWeight:700,fontSize:13}}>{dm.name}</div></div><div ref={ref} style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:7,paddingBottom:10}}>{(messages[key(cu.id,dm.id)]||[]).map((msg,i)=>{const mine=msg.from===cu.id;return<div key={i} style={{display:"flex",justifyContent:mine?"flex-end":"flex-start"}}><div style={{background:mine?`${cu.color||"#6EE7B7"}33`:"#ffffff0f",border:`1px solid ${mine?(cu.color||"#6EE7B7")+"33":"#ffffff15"}`,borderRadius:mine?"14px 14px 3px 14px":"14px 14px 14px 3px",padding:"8px 12px",maxWidth:"75%",fontSize:13}}>{msg.text}</div></div>;})}
-</div><div style={{display:"flex",gap:7}}><input placeholder="Message…" value={txt} onChange={e=>setTxt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} style={{flex:1,fontSize:13}}/><button onClick={send} style={{background:`${cu.color||"#6EE7B7"}22`,border:`1px solid ${cu.color||"#6EE7B7"}55`,color:cu.color||"#6EE7B7",padding:"0 14px",borderRadius:9,fontWeight:700}}>→</button></div></div>;
-return<div><div style={{fontWeight:700,fontSize:17,marginBottom:14}}>Direct Messages</div>{users.filter(u=>u.id!==cu.id).map(u=>{const k=key(cu.id,u.id),conv=messages[k]||[],last=conv[conv.length-1];return<div key={u.id} onClick={()=>setDm(u)} className="card" style={{marginBottom:9,cursor:"pointer",display:"flex",gap:9,alignItems:"center"}}><div style={{position:"relative"}}><Av u={u} s={40}/><div style={{position:"absolute",bottom:0,right:0,width:8,height:8,borderRadius:"50%",background:"#6EE7B7",border:"2px solid #080810"}}/></div><div style={{flex:1,overflow:"hidden"}}><div style={{fontWeight:700,fontSize:13}}>{u.name}</div><div style={{fontSize:12,color:"#888",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{last?last.text:"Start a conversation…"}</div></div></div>;})}
-</div>;};
+const MsgTab=({cu,users})=>{
+  const [dm,setDm]=useState(null);
+  const [txt,setTxt]=useState("");
+  const [convos,setConvos]=useState({});
+  const [lastMsgs,setLastMsgs]=useState({});
+  const ref=useRef(null);
+
+  useEffect(()=>{
+    supabase.from('messages')
+      .select('*')
+      .or(`from_id.eq.${cu.id},to_id.eq.${cu.id}`)
+      .order('created_at',{ascending:true})
+      .then(({data})=>{
+        if(!data) return;
+        const grouped={};
+        data.forEach(msg=>{
+          const partner=msg.from_id===cu.id?msg.to_id:msg.from_id;
+          if(!grouped[partner]) grouped[partner]=[];
+          grouped[partner].push(msg);
+        });
+        setConvos(grouped);
+        const lasts={};
+        Object.entries(grouped).forEach(([uid,ms])=>{ lasts[uid]=ms[ms.length-1]; });
+        setLastMsgs(lasts);
+      });
+    const ch=supabase.channel('dm-'+cu.id)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:`to_id=eq.${cu.id}`},(payload)=>{
+        const msg=payload.new;
+        const partner=msg.from_id;
+        setConvos(prev=>({...prev,[partner]:[...(prev[partner]||[]),msg]}));
+        setLastMsgs(prev=>({...prev,[partner]:msg}));
+      })
+      .subscribe();
+    return()=>supabase.removeChannel(ch);
+  },[cu.id]);
+
+  useEffect(()=>{ if(ref.current) ref.current.scrollTop=ref.current.scrollHeight; },[dm,convos]);
+
+  const send=async()=>{
+    if(!txt.trim()||!dm) return;
+    const text=txt.trim();
+    setTxt("");
+    const{data,error}=await supabase.from('messages').insert({from_id:cu.id,to_id:dm.id,text}).select().single();
+    if(!error&&data){
+      setConvos(prev=>({...prev,[dm.id]:[...(prev[dm.id]||[]),data]}));
+      setLastMsgs(prev=>({...prev,[dm.id]:data}));
+    }
+  };
+
+  const dmMsgs=dm?(convos[dm.id]||[]):[];
+
+  if(dm) return(
+    <div style={{display:"flex",flexDirection:"column",height:"70vh"}}>
+      <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:12}}>
+        <button onClick={()=>setDm(null)} style={{background:"transparent",border:"none",color:"#6EE7B7",fontSize:20,padding:0}}>←</button>
+        <Av u={dm} s={32}/>
+        <div style={{fontWeight:700,fontSize:13}}>{dm.name}</div>
+      </div>
+      <div ref={ref} style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:7,paddingBottom:10}}>
+        {dmMsgs.map((msg,i)=>{
+          const mine=msg.from_id===cu.id;
+          return<div key={msg.id||i} style={{display:"flex",justifyContent:mine?"flex-end":"flex-start"}}>
+            <div style={{background:mine?`${cu.color||"#6EE7B7"}33`:"#ffffff0f",border:`1px solid ${mine?(cu.color||"#6EE7B7")+"33":"#ffffff15"}`,borderRadius:mine?"14px 14px 3px 14px":"14px 14px 14px 3px",padding:"8px 12px",maxWidth:"75%",fontSize:13}}>{msg.text}</div>
+          </div>;
+        })}
+      </div>
+      <div style={{display:"flex",gap:7}}>
+        <input placeholder="Message…" value={txt} onChange={e=>setTxt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} style={{flex:1,fontSize:13}}/>
+        <button onClick={send} style={{background:`${cu.color||"#6EE7B7"}22`,border:`1px solid ${cu.color||"#6EE7B7"}55`,color:cu.color||"#6EE7B7",padding:"0 14px",borderRadius:9,fontWeight:700}}>→</button>
+      </div>
+    </div>
+  );
+
+  return(
+    <div>
+      <div style={{fontWeight:700,fontSize:17,marginBottom:14}}>Direct Messages</div>
+      {users.filter(u=>u.id!==cu.id).map(u=>{
+        const last=lastMsgs[u.id];
+        return<div key={u.id} onClick={()=>setDm(u)} className="card" style={{marginBottom:9,cursor:"pointer",display:"flex",gap:9,alignItems:"center"}}>
+          <div style={{position:"relative"}}>
+            <Av u={u} s={40}/>
+            <div style={{position:"absolute",bottom:0,right:0,width:8,height:8,borderRadius:"50%",background:"#6EE7B7",border:"2px solid #080810"}}/>
+          </div>
+          <div style={{flex:1,overflow:"hidden"}}>
+            <div style={{fontWeight:700,fontSize:13}}>{u.name}</div>
+            <div style={{fontSize:12,color:"#888",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{last?last.text:"Start a conversation…"}</div>
+          </div>
+        </div>;
+      })}
+    </div>
+  );
+};
 
 // ── BADGES GRID ──
 const BadgesGrid=({badges,cu})=>{

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { supabase } from './supabase';
+import PhysioTab from './PhysioTab';
 
 // ── CONSTANTS ──
 const TC=["#6EE7B7","#93C5FD","#F9A8D4","#FCD34D","#C4B5FD","#FB923C","#34D399","#F472B6"];
@@ -1110,7 +1111,7 @@ export default function App({ session }) {
   const unread=notifs.filter(n=>!n.read).length;
   const myR=lb.findIndex(e=>e.uid===cu?.id)+1;
   const allUsers=[cu,...users.filter(u=>u.id!==cu?.id)];
-  const NAV=[["feed","Feed","📣"],["challenges","Train","🏆"],["leaderboard","Board","🥇"],["messages","DMs","💬"],["ai","AI ✨","🤖"],...(cu?.is_admin?[["admin","Admin","⚙️"]]:[]),["profile","Me","👤"]];
+  const NAV=[["feed","Feed","📣"],["challenges","Train","🏆"],["leaderboard","Board","🥇"],["messages","DMs","💬"],["physio","Physio","🩺"],["ai","AI ✨","🤖"],...(cu?.is_admin?[["admin","Admin","⚙️"]]:[]),["profile","Me","👤"]];
 
   return<>
     <style>{makeCSS(th)}</style>
@@ -1149,6 +1150,7 @@ export default function App({ session }) {
         {tab==="challenges"&&<ChalTab challenges={challenges} feed={feed} cu={cu} onLog={ch=>setShowLog(ch)}/>}
         {tab==="leaderboard"&&<LbTab lb={lb} users={allUsers} challenges={challenges} cu={cu}/>}
         {tab==="messages"&&<MsgTab cu={cu} users={allUsers} messages={msgs} setMessages={setMsgs}/>}
+        {tab==="physio"&&<PhysioTab cu={cu}/>}
         {tab==="ai"&&<AiTab challenges={challenges} setChallenges={setChallenges} notify={notify} cu={cu}/>}
         {tab==="admin"&&cu?.is_admin&&<AdminTab cu={cu} users={allUsers} setUsers={setUsers} challenges={challenges} setChallenges={setChallenges} notify={notify} addNotif={addNotif} session={session} onTipCreated={handleTipCreated}/>}
         {tab==="profile"&&<ProfileTab cu={cu} lb={lb} pd={pd} setPd={setPd} notify={notify} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin}/>}

@@ -17,7 +17,7 @@ const IC=[];
 const ILB=[];
 const IF=[];
 const IM={};
-const IP={weight:[{date:"Mar 17",val:74.2},{date:"Mar 18",val:73.8},{date:"Mar 23",val:72.5}],mood:[{date:"Mar 17",val:3},{date:"Mar 20",val:5},{date:"Mar 23",val:5}],notes:["Feeling great after the run!"]};
+const IP={mood:[{date:"Mar 17",val:3},{date:"Mar 20",val:5},{date:"Mar 23",val:5}],notes:["Feeling great after the run!"]};
 
 // ── HELPERS ──
 const ago=ts=>{const d=Date.now()-ts;if(d<60000)return"just now";if(d<3600000)return`${Math.floor(d/60000)}m`;return`${Math.floor(d/3600000)}h`;};
@@ -751,8 +751,8 @@ const BadgesGrid=({badges,cu})=>{
 };
 
 // ── PROFILE TAB ──
-const ProfileTab=({cu,lb,pd,setPd,notify,checked,onCheckin,lastCheckin,badges,awardBadge})=>{const [nw,setNw]=useState("");const [nm,setNm]=useState(3);const [nn,setNn]=useState("");const myLB=lb.find(e=>e.uid===cu.id);const myR=lb.findIndex(e=>e.uid===cu.id)+1;
-const save=()=>{const today=new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"});if(nw){const v=parseFloat(nw);if(!isNaN(v))setPd(p=>({...p,weight:[...p.weight.slice(-6),{date:today,val:v}]}))}setPd(p=>({...p,mood:[...p.mood.slice(-6),{date:today,val:nm}]}));if(nn.trim())setPd(p=>({...p,notes:[...p.notes,nn]}));setNw("");setNn("");setNm(3);notify("🔒 Saved!");};
+const ProfileTab=({cu,lb,pd,setPd,notify,checked,onCheckin,lastCheckin,badges,awardBadge})=>{const [nm,setNm]=useState(3);const [nn,setNn]=useState("");const myLB=lb.find(e=>e.uid===cu.id);const myR=lb.findIndex(e=>e.uid===cu.id)+1;
+const save=()=>{const today=new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"});setPd(p=>({...p,mood:[...p.mood.slice(-6),{date:today,val:nm}]}));if(nn.trim())setPd(p=>({...p,notes:[...p.notes,nn]}));setNn("");setNm(3);notify("🔒 Saved!");};
 return<div>
   {/* 🔒 Private daily check-in — only you see this */}
   {!checked&&<CheckIn onDone={onCheckin}/>}
@@ -761,10 +761,9 @@ return<div>
   <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14}}><Av u={cu} s={50}/><div><div style={{fontWeight:800,fontSize:18}}>{cu.name}</div><div style={{fontSize:12,color:"#888"}}>{cu.role}{cu.is_admin?" · 👑 Admin":""}</div><div style={{fontSize:10,color:"#6EE7B7",marginTop:2}}>🔒 Private</div></div></div>
 <div style={{display:"flex",gap:7,marginBottom:10}}>{[["#"+(myR||"–"),"Rank","#6EE7B7"],[(cu.checkin_streak||0)+"🔥","Streak","#FCD34D"],[(myLB?.pts||0).toLocaleString(),"Points","#93C5FD"]].map(([v,l,c])=><div key={l} className="card" style={{flex:1,textAlign:"center",padding:12}}><div style={{fontWeight:800,fontSize:16,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}</div>
 <ReadinessHistoryCard cu={cu}/>
-<BadgesGrid badges={badges||[]} cu={cu}/><div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>⚖️ Weight</div><div style={{fontSize:12,color:"#6EE7B7",fontWeight:700}}>{pd.weight[pd.weight.length-1]?.val} kg</div></div><Spk sid="wt" data={pd.weight} color="#6EE7B7"/></div>
-<div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>😊 Mood</div><div style={{fontSize:12,color:"#F9A8D4",fontWeight:700}}>{pd.mood[pd.mood.length-1]?.val}/5</div></div><Spk sid="md" data={pd.mood} color="#F9A8D4"/></div>
+<BadgesGrid badges={badges||[]} cu={cu}/><div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>😊 Mood</div><div style={{fontSize:12,color:"#F9A8D4",fontWeight:700}}>{pd.mood[pd.mood.length-1]?.val}/5</div></div><Spk sid="md" data={pd.mood} color="#F9A8D4"/></div>
 <div className="card" style={{marginBottom:9}}><div style={{fontWeight:700,fontSize:13,marginBottom:8}}>📓 Journal</div>{pd.notes.map((n,i)=><div key={i} style={{fontSize:12,color:"#888",borderLeft:"2px solid #ffffff10",paddingLeft:7,marginBottom:5}}>{n}</div>)}</div>
-<div className="card"><div style={{fontWeight:700,marginBottom:12}}>Log Today</div><Inp label="Weight (kg)" placeholder="72.5" type="number" min="0" value={nw} onChange={e=>setNw(e.target.value)}/><div style={{fontSize:11,color:"#888",marginBottom:6}}>Mood: <span style={{color:"#F9A8D4",fontWeight:700}}>{["😔","😕","😐","🙂","😄"][nm-1]}</span></div><div style={{display:"flex",gap:4,marginBottom:9}}>{[1,2,3,4,5].map(v=><button key={v} onClick={()=>setNm(v)} style={{flex:1,padding:"6px 0",borderRadius:9,border:`1px solid ${nm===v?"#F9A8D455":"#ffffff15"}`,background:nm===v?"#F9A8D420":"transparent",fontSize:15}}>{["😔","😕","😐","🙂","😄"][v-1]}</button>)}</div><textarea placeholder="Journal note…" rows={2} value={nn} onChange={e=>setNn(e.target.value)} style={{resize:"none",marginBottom:9}}/><button onClick={save} style={{width:"100%",background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",border:"1px solid #6EE7B755",color:"#6EE7B7",padding:"11px",borderRadius:11,fontWeight:700}}>🔒 Save Privately</button></div>
+<div className="card"><div style={{fontWeight:700,marginBottom:12}}>Log Today</div><div style={{fontSize:11,color:"#888",marginBottom:6}}>Mood: <span style={{color:"#F9A8D4",fontWeight:700}}>{["😔","😕","😐","🙂","😄"][nm-1]}</span></div><div style={{display:"flex",gap:4,marginBottom:9}}>{[1,2,3,4,5].map(v=><button key={v} onClick={()=>setNm(v)} style={{flex:1,padding:"6px 0",borderRadius:9,border:`1px solid ${nm===v?"#F9A8D455":"#ffffff15"}`,background:nm===v?"#F9A8D420":"transparent",fontSize:15}}>{["😔","😕","😐","🙂","😄"][v-1]}</button>)}</div><textarea placeholder="Journal note…" rows={2} value={nn} onChange={e=>setNn(e.target.value)} style={{resize:"none",marginBottom:9}}/><button onClick={save} style={{width:"100%",background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",border:"1px solid #6EE7B755",color:"#6EE7B7",padding:"11px",borderRadius:11,fontWeight:700}}>🔒 Save Privately</button></div>
 </div>;};
 
 // ── ADMIN TAB ──

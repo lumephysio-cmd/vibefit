@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { supabase } from './supabase';
 import PhysioTab from './PhysioTab';
+import LbTab from './LbTab';
+import { BADGE_DEFS } from './badges';
 
 // ── CONSTANTS ──
 const TC=["#6EE7B7","#93C5FD","#F9A8D4","#FCD34D","#C4B5FD","#FB923C","#34D399","#F472B6"];
@@ -296,7 +298,7 @@ const ReadinessHistoryCard=({cu})=>{
 };
 
 // ── ERGONOMICS CHECK ──
-const ErgonomicsCheck=({cu,notify})=>{
+const ErgonomicsCheck=({cu,notify,awardBadge})=>{
   const [existing,setExisting]=useState(null);
   const [loading,setLoading]=useState(true);
   const [step,setStep]=useState(0);
@@ -358,7 +360,7 @@ const ErgonomicsCheck=({cu,notify})=>{
       if(data){setExisting(data);notify("✅ Ergonomics assessment updated!");}
     } else {
       const{data}=await supabase.from('ergonomics_assessments').insert(payload).select().single();
-      if(data){setExisting(data);notify("✅ Ergonomics assessment saved!");}
+      if(data){setExisting(data);notify("✅ Ergonomics assessment saved!");if(awardBadge)awardBadge('posture_check');}
     }
     setRetaking(false);setSaving(false);
   };
@@ -581,13 +583,39 @@ const ChalTab=({challenges,feed,cu,onLog})=>{
         </button>
       </div>;
     })}
-    {a.length===0&&<div style={{textAlign:"center",color:"#888",padding:"40px 0",fontSize:13}}>No active challenges.</div>}
+    {a.length===0&&<div style={{textAlign:"center",color:"#888",padding:"20px 0 10px",fontSize:13}}>No active challenges.</div>}
+
+    {/* ── Challenge History ── */}
+    {challenges.filter(c=>!c.active).length>0&&<>
+      <div style={{fontWeight:700,fontSize:14,color:"#888",marginTop:18,marginBottom:10}}>📚 Past Challenges</div>
+      {challenges.filter(c=>!c.active).map(ch=>{
+        const myPosts=feed.filter(p=>p.uid===cu.id&&String(p.cid)===String(ch.id));
+        const tot=myPosts.reduce((a,p)=>a+p.val,0);
+        const hitGoal=ch.goal&&tot>=ch.goal;
+        const pct=ch.goal?Math.min(1,tot/ch.goal):0;
+        const days=myPosts.length;
+        return<div key={ch.id} className="card fu" style={{marginBottom:9,opacity:.8,borderColor:`${ch.color}18`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+            <span style={{fontSize:22}}>{ch.icon}</span>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700,fontSize:13,color:"#bbb"}}>{ch.title}</div>
+              <div style={{fontSize:10,color:"#555"}}>{ch.endDate?`Ended ${ch.endDate}`:"Archived"}</div>
+            </div>
+            {hitGoal?<span style={{fontSize:11,background:"#6EE7B722",border:"1px solid #6EE7B744",color:"#6EE7B7",borderRadius:8,padding:"3px 8px",fontWeight:700}}>✅ Completed</span>
+              :<span style={{fontSize:11,background:"#ffffff08",borderRadius:8,padding:"3px 8px",color:"#666"}}>{Math.round(pct*100)}%</span>}
+          </div>
+          {ch.type!=="habit"&&<>
+            <div style={{background:"#ffffff08",borderRadius:4,height:4,marginBottom:6}}>
+              <div style={{width:`${pct*100}%`,height:"100%",background:hitGoal?"#6EE7B7":ch.color,borderRadius:4}}/>
+            </div>
+            <div style={{fontSize:11,color:"#666"}}>{tot.toLocaleString()} / {ch.goal?.toLocaleString()} {ch.unit} · {days} log{days!==1?"s":""}</div>
+          </>}
+          {ch.type==="habit"&&<div style={{fontSize:11,color:"#666"}}>{days} day{days!==1?"s":""} completed</div>}
+        </div>;
+      })}
+    </>}
   </div>;
 };
-
-// ── LEADERBOARD TAB ──
-const LbTab=({lb,users,challenges,cu})=>{const a=challenges.filter(c=>c.active);const [sel,setSel]=useState(a[0]||challenges[0]);const medals=["🥇","🥈","🥉"];return<div><div style={{fontWeight:700,fontSize:17,marginBottom:12}}>Leaderboard</div>{a.length>0&&<div style={{display:"flex",gap:3,background:"#ffffff08",borderRadius:11,padding:3,marginBottom:14}}>{a.map(c=><button key={c.id} onClick={()=>setSel(c)} style={{flex:1,padding:"5px",borderRadius:8,border:"none",background:sel?.id===c.id?`${c.color}22`:"transparent",color:sel?.id===c.id?c.color:"#888",fontSize:16}}>{c.icon}</button>)}</div>}{lb.map((e,i)=>{const u=users.find(x=>x.id===e.uid);if(!u)return null;const me=u.id===cu.id;return<div key={e.uid} className="card" style={{marginBottom:8,border:me?`1px solid ${u.color||"#6EE7B7"}55`:"",background:me?`${u.color||"#6EE7B7"}08`:""}}><div style={{display:"flex",alignItems:"center",gap:9}}><div style={{fontWeight:800,fontSize:16,width:24,textAlign:"center"}}>{i<3?medals[i]:`#${i+1}`}</div><Av u={u} s={36}/><div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between"}}><div style={{fontWeight:700,fontSize:13}}>{u.name}{me&&<span style={{fontSize:10,color:u.color||"#6EE7B7",marginLeft:5}}>you</span>}</div><div style={{fontWeight:700,color:u.color||"#6EE7B7",fontSize:13}}>{e.pts.toLocaleString()}</div></div><div style={{background:"#ffffff08",borderRadius:4,height:4,marginTop:4}}><div style={{width:`${Math.min(100,(e.pts/(sel?.goal||10000))*100)}%`,height:"100%",background:u.color||"#6EE7B7",borderRadius:4}}/></div></div></div></div>;})}
-</div>;};
 
 // ── MESSAGES TAB ──
 const MsgTab=({cu,users,messages,setMessages})=>{const [dm,setDm]=useState(null);const [txt,setTxt]=useState("");const ref=useRef(null);const key=(a,b)=>[Math.min(a,b),Math.max(a,b)].join("-");useEffect(()=>{if(ref.current)ref.current.scrollTop=ref.current.scrollHeight;},[dm,messages]);const send=()=>{if(!txt.trim()||!dm)return;const k=key(cu.id,dm.id);setMessages(m=>({...m,[k]:[...(m[k]||[]),{from:cu.id,text:txt,ts:Date.now()}]}));setTxt("");};
@@ -596,24 +624,54 @@ if(dm)return<div style={{display:"flex",flexDirection:"column",height:"70vh"}}><
 return<div><div style={{fontWeight:700,fontSize:17,marginBottom:14}}>Direct Messages</div>{users.filter(u=>u.id!==cu.id).map(u=>{const k=key(cu.id,u.id),conv=messages[k]||[],last=conv[conv.length-1];return<div key={u.id} onClick={()=>setDm(u)} className="card" style={{marginBottom:9,cursor:"pointer",display:"flex",gap:9,alignItems:"center"}}><div style={{position:"relative"}}><Av u={u} s={40}/><div style={{position:"absolute",bottom:0,right:0,width:8,height:8,borderRadius:"50%",background:"#6EE7B7",border:"2px solid #080810"}}/></div><div style={{flex:1,overflow:"hidden"}}><div style={{fontWeight:700,fontSize:13}}>{u.name}</div><div style={{fontSize:12,color:"#888",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{last?last.text:"Start a conversation…"}</div></div></div>;})}
 </div>;};
 
+// ── BADGES GRID ──
+const BadgesGrid=({badges,cu})=>{
+  const myBadges=(badges||[]).filter(b=>b.user_id===cu.id);
+  if(!myBadges.length) return(
+    <div className="card" style={{marginBottom:9,textAlign:"center",padding:20}}>
+      <div style={{fontSize:32,marginBottom:8}}>🏅</div>
+      <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>No badges yet</div>
+      <div style={{fontSize:12,color:"#888"}}>Complete check-ins, build streaks and crush challenges to earn badges!</div>
+    </div>
+  );
+  return(
+    <div className="card" style={{marginBottom:9}}>
+      <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>🏅 Badges ({myBadges.length})</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
+        {myBadges.map(b=>{
+          const def=BADGE_DEFS[b.badge_type];
+          if(!def)return null;
+          return(
+            <div key={b.badge_type} title={def.desc} style={{background:`${def.color}15`,border:`1px solid ${def.color}30`,borderRadius:12,padding:"9px 10px",textAlign:"center",minWidth:68,flex:"0 1 auto"}}>
+              <div style={{fontSize:22,marginBottom:4}}>{def.icon}</div>
+              <div style={{fontSize:9,color:def.color,fontWeight:700,lineHeight:1.3,maxWidth:64}}>{def.label}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 // ── PROFILE TAB ──
-const ProfileTab=({cu,lb,pd,setPd,notify,checked,onCheckin,lastCheckin})=>{const [nw,setNw]=useState("");const [nm,setNm]=useState(3);const [nn,setNn]=useState("");const myLB=lb.find(e=>e.uid===cu.id);const myR=lb.findIndex(e=>e.uid===cu.id)+1;
+const ProfileTab=({cu,lb,pd,setPd,notify,checked,onCheckin,lastCheckin,badges,awardBadge})=>{const [nw,setNw]=useState("");const [nm,setNm]=useState(3);const [nn,setNn]=useState("");const myLB=lb.find(e=>e.uid===cu.id);const myR=lb.findIndex(e=>e.uid===cu.id)+1;
 const save=()=>{const today=new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"});if(nw){const v=parseFloat(nw);if(!isNaN(v))setPd(p=>({...p,weight:[...p.weight.slice(-6),{date:today,val:v}]}))}setPd(p=>({...p,mood:[...p.mood.slice(-6),{date:today,val:nm}]}));if(nn.trim())setPd(p=>({...p,notes:[...p.notes,nn]}));setNw("");setNn("");setNm(3);notify("🔒 Saved!");};
 return<div>
   {/* 🔒 Private daily check-in — only you see this */}
   {!checked&&<CheckIn onDone={onCheckin}/>}
   {checked&&lastCheckin&&<ReadinessCard checkin={lastCheckin}/>}
-  <ErgonomicsCheck cu={cu} notify={notify}/>
+  <ErgonomicsCheck cu={cu} notify={notify} awardBadge={awardBadge}/>
   <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14}}><Av u={cu} s={50}/><div><div style={{fontWeight:800,fontSize:18}}>{cu.name}</div><div style={{fontSize:12,color:"#888"}}>{cu.role}{cu.is_admin?" · 👑 Admin":""}</div><div style={{fontSize:10,color:"#6EE7B7",marginTop:2}}>🔒 Private</div></div></div>
-<div style={{display:"flex",gap:7,marginBottom:10}}>{[["#"+(myR||"–"),"Rank","#6EE7B7"],[(myLB?.str||0)+"🔥","Streak","#FCD34D"],[(myLB?.pts||0).toLocaleString(),"Points","#93C5FD"]].map(([v,l,c])=><div key={l} className="card" style={{flex:1,textAlign:"center",padding:12}}><div style={{fontWeight:800,fontSize:16,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}</div>
-<ReadinessHistoryCard cu={cu}/><div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>⚖️ Weight</div><div style={{fontSize:12,color:"#6EE7B7",fontWeight:700}}>{pd.weight[pd.weight.length-1]?.val} kg</div></div><Spk sid="wt" data={pd.weight} color="#6EE7B7"/></div>
+<div style={{display:"flex",gap:7,marginBottom:10}}>{[["#"+(myR||"–"),"Rank","#6EE7B7"],[(cu.checkin_streak||0)+"🔥","Streak","#FCD34D"],[(myLB?.pts||0).toLocaleString(),"Points","#93C5FD"]].map(([v,l,c])=><div key={l} className="card" style={{flex:1,textAlign:"center",padding:12}}><div style={{fontWeight:800,fontSize:16,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}</div>
+<ReadinessHistoryCard cu={cu}/>
+<BadgesGrid badges={badges||[]} cu={cu}/><div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>⚖️ Weight</div><div style={{fontSize:12,color:"#6EE7B7",fontWeight:700}}>{pd.weight[pd.weight.length-1]?.val} kg</div></div><Spk sid="wt" data={pd.weight} color="#6EE7B7"/></div>
 <div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>😊 Mood</div><div style={{fontSize:12,color:"#F9A8D4",fontWeight:700}}>{pd.mood[pd.mood.length-1]?.val}/5</div></div><Spk sid="md" data={pd.mood} color="#F9A8D4"/></div>
 <div className="card" style={{marginBottom:9}}><div style={{fontWeight:700,fontSize:13,marginBottom:8}}>📓 Journal</div>{pd.notes.map((n,i)=><div key={i} style={{fontSize:12,color:"#888",borderLeft:"2px solid #ffffff10",paddingLeft:7,marginBottom:5}}>{n}</div>)}</div>
 <div className="card"><div style={{fontWeight:700,marginBottom:12}}>Log Today</div><Inp label="Weight (kg)" placeholder="72.5" type="number" min="0" value={nw} onChange={e=>setNw(e.target.value)}/><div style={{fontSize:11,color:"#888",marginBottom:6}}>Mood: <span style={{color:"#F9A8D4",fontWeight:700}}>{["😔","😕","😐","🙂","😄"][nm-1]}</span></div><div style={{display:"flex",gap:4,marginBottom:9}}>{[1,2,3,4,5].map(v=><button key={v} onClick={()=>setNm(v)} style={{flex:1,padding:"6px 0",borderRadius:9,border:`1px solid ${nm===v?"#F9A8D455":"#ffffff15"}`,background:nm===v?"#F9A8D420":"transparent",fontSize:15}}>{["😔","😕","😐","🙂","😄"][v-1]}</button>)}</div><textarea placeholder="Journal note…" rows={2} value={nn} onChange={e=>setNn(e.target.value)} style={{resize:"none",marginBottom:9}}/><button onClick={save} style={{width:"100%",background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",border:"1px solid #6EE7B755",color:"#6EE7B7",padding:"11px",borderRadius:11,fontWeight:700}}>🔒 Save Privately</button></div>
 </div>;};
 
 // ── ADMIN TAB ──
-const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,session,onTipCreated})=>{
+const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,session,onTipCreated,feed,teams:teamsProp})=>{
   const [sec,setSec]=useState("overview");
   const [chF,setChF]=useState({title:"",icon:"🏃",unit:"",goal:"",color:"#6EE7B7",type:"count",physioNote:""});
   const [tipF,setTipF]=useState({title:"",content:"",body_part:"general",emoji:"💡",color:"#6EE7B7"});
@@ -721,6 +779,7 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
 
   const SECS=[
     ["overview","Overview","🏠"],["analytics","Analytics","📊"],
+    ["digest","Digest","📧"],
     ["tips","Physio Tips","💡"],["teams","Teams","👥"],["challenges","Challenges","🏆"],
     ...(cu.is_super_admin?[["superadmin","Super Admin","🌐"]]:[])]
 
@@ -728,12 +787,50 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
     <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:12}}><span style={{fontWeight:700,fontSize:17}}>Admin Panel</span><Pill color="#C4B5FD" text="ADMIN"/>{cu.is_super_admin&&<Pill color="#FCD34D" text="SUPER ADMIN"/>}</div>
     <div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto"}}>{SECS.map(([id,lbl,icon])=><button key={id} onClick={()=>setSec(id)} style={{flexShrink:0,padding:"7px 12px",borderRadius:10,border:`1px solid ${sec===id?"#C4B5FD55":"#ffffff15"}`,background:sec===id?"#C4B5FD18":"transparent",color:sec===id?"#C4B5FD":"#888",fontWeight:700,fontSize:12,display:"flex",gap:4,alignItems:"center"}}><span>{icon}</span>{lbl}</button>)}</div>
 
-    {sec==="overview"&&<div>
-      <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:14}}>
-        {[[users.length+1,"Members","#6EE7B7"],[teams.length,"Teams","#93C5FD"],[challenges.filter(c=>c.active).length,"Active","#F9A8D4"]].map(([v,l,c])=><div key={l} className="card" style={{flex:"1 1 80px",padding:12}}><div style={{fontWeight:800,fontSize:22,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}
-      </div>
-      <div className="card"><div style={{fontWeight:700,marginBottom:9}}>Quick Actions</div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}><Btn color="#93C5FD" text="📊 Analytics" onClick={()=>setSec("analytics")}/><Btn color="#6EE7B7" text="💡 Post Tip" onClick={()=>setSec("tips")}/><Btn color="#F9A8D4" text="🏆 Challenge" onClick={()=>setSec("challenges")}/></div></div>
-    </div>}
+    {sec==="overview"&&(()=>{
+      // Company Wellness Score (0–100)
+      const today7=new Date(Date.now()-7*864e5);
+      const recentLogs=(feed||[]).filter(p=>new Date(p.ts)>=today7);
+      const recentLoggers=new Set(recentLogs.map(p=>p.uid));
+      const totalMembers=users.length+1;
+      const partRate=totalMembers>0?recentLoggers.size/totalMembers:0;
+      const allProfiles=[...users];
+      const avgStreak=allProfiles.length>0?allProfiles.reduce((a,u)=>a+(u.checkin_streak||0),0)/allProfiles.length:0;
+      const wellnessScore=Math.min(100,Math.round(partRate*100*0.5+Math.min(1,avgStreak/14)*100*0.3+Math.min(1,(recentLogs.length/(totalMembers*3)))*100*0.2));
+      const wsColor=wellnessScore>=75?"#6EE7B7":wellnessScore>=50?"#FCD34D":wellnessScore>=25?"#FB923C":"#F87171";
+      const wsLabel=wellnessScore>=75?"Thriving 💚":wellnessScore>=50?"Good 💛":wellnessScore>=25?"Developing 🟠":"Just Starting 🔴";
+      return<div>
+        {/* Wellness Score hero */}
+        <div style={{background:"linear-gradient(135deg,#6EE7B710,#93C5FD08)",border:"1px solid #6EE7B722",borderRadius:18,padding:"18px 16px",marginBottom:14}}>
+          <div style={{display:"flex",alignItems:"center",gap:14}}>
+            <div style={{position:"relative",width:72,height:72,flexShrink:0}}>
+              <svg width={72} height={72} style={{transform:"rotate(-90deg)"}}>
+                <circle cx={36} cy={36} r={30} fill="none" stroke="#ffffff0f" strokeWidth={6}/>
+                <circle cx={36} cy={36} r={30} fill="none" stroke={wsColor} strokeWidth={6} strokeDasharray={`${(wellnessScore/100)*188} 188`} strokeLinecap="round" style={{transition:"stroke-dasharray .8s"}}/>
+              </svg>
+              <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:16,color:wsColor}}>{wellnessScore}</div>
+            </div>
+            <div>
+              <div style={{fontSize:11,color:"#888",marginBottom:3}}>Company Wellness Score</div>
+              <div style={{fontWeight:800,fontSize:20,color:wsColor,marginBottom:2}}>{wsLabel}</div>
+              <div style={{fontSize:11,color:"#888"}}>Based on participation, streaks & activity</div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginTop:14}}>
+            {[["Participation",Math.round(partRate*100)+"%","#6EE7B7"],["Avg Streak",avgStreak.toFixed(1)+"d","#FCD34D"],["Logs / week",recentLogs.length,"#93C5FD"]].map(([l,v,c])=>(
+              <div key={l} style={{background:"#ffffff08",borderRadius:10,padding:"8px 10px",textAlign:"center"}}>
+                <div style={{fontWeight:800,fontSize:16,color:c}}>{v}</div>
+                <div style={{fontSize:9,color:"#666"}}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:14}}>
+          {[[totalMembers,"Members","#6EE7B7"],[teams.length,"Teams","#93C5FD"],[challenges.filter(c=>c.active).length,"Active","#F9A8D4"]].map(([v,l,c])=><div key={l} className="card" style={{flex:"1 1 80px",padding:12}}><div style={{fontWeight:800,fontSize:22,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}
+        </div>
+        <div className="card"><div style={{fontWeight:700,marginBottom:9}}>Quick Actions</div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}><Btn color="#93C5FD" text="📊 Analytics" onClick={()=>setSec("analytics")}/><Btn color="#6EE7B7" text="💡 Post Tip" onClick={()=>setSec("tips")}/><Btn color="#F9A8D4" text="🏆 Challenge" onClick={()=>setSec("challenges")}/><Btn color="#FCD34D" text="📧 Digest" onClick={()=>setSec("digest")}/></div></div>
+      </div>;
+    })()}
 
     {sec==="analytics"&&<div>
       <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>Company Analytics</div>
@@ -796,6 +893,86 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
       </>}
       {!analyticsLoading&&!analytics&&<div style={{textAlign:"center",padding:"30px 0",color:"#888",fontSize:13}}><div style={{fontSize:32,marginBottom:8}}>📊</div>No activity data yet — get your team logging!</div>}
     </div>}
+
+    {sec==="digest"&&(()=>{
+      // Build weekly digest preview from available data
+      const today7=new Date(Date.now()-7*864e5);
+      const weekLogs=(feed||[]).filter(p=>new Date(p.ts)>=today7);
+      const weekLoggers=new Set(weekLogs.map(p=>p.uid));
+      const allProfiles=users;
+      const totalMembers=users.length+1;
+      // Top scorer this week
+      const scorePts={};
+      weekLogs.forEach(p=>{scorePts[p.uid]=(scorePts[p.uid]||0)+(p.val||0);});
+      const topEntry=Object.entries(scorePts).sort((a,b)=>b[1]-a[1])[0];
+      const topUser=topEntry?allProfiles.find(u=>u.id===topEntry[0]):null;
+      const topPts=topEntry?topEntry[1]:0;
+      // Avg readiness from last 7 checkins
+      const weekDateStr=today7.toISOString().slice(0,10);
+      const TIPS=["Take a 5-minute walk every hour — your lower back will thank you.","Roll your shoulders back 10 times to reset your posture right now.","Drink a full glass of water before your next meeting.","Try the 20-20-20 rule: every 20 minutes, look 20 feet away for 20 seconds.","A 2-minute standing stretch at midday reduces afternoon fatigue by 30%."];
+      const tipOfWeek=TIPS[new Date().getDay()%TIPS.length];
+      return<div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+          <div style={{fontWeight:700,fontSize:16}}>Weekly Digest Preview</div>
+          <span style={{fontSize:10,background:"#6EE7B722",border:"1px solid #6EE7B733",borderRadius:8,padding:"2px 8px",color:"#6EE7B7",fontWeight:700}}>PREVIEW</span>
+        </div>
+        <div style={{fontSize:12,color:"#888",marginBottom:16}}>This is what your team would receive every Monday morning.</div>
+
+        {/* Email preview card */}
+        <div style={{background:"#13131f",border:"1px solid #ffffff15",borderRadius:18,overflow:"hidden"}}>
+          {/* Email header */}
+          <div style={{background:"linear-gradient(135deg,#6EE7B722,#93C5FD15)",borderBottom:"1px solid #ffffff10",padding:"20px 20px 16px",textAlign:"center"}}>
+            <div style={{fontWeight:900,fontSize:22,background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:4}}>VIBEFIT</div>
+            <div style={{fontSize:12,color:"#888"}}>Weekly Wellness Digest · {new Date().toLocaleDateString('en',{month:'long',day:'numeric',year:'numeric'})}</div>
+          </div>
+          <div style={{padding:"20px"}}>
+            <div style={{fontSize:15,fontWeight:800,color:"#e8e8f0",marginBottom:14}}>Good morning, Team! 👋</div>
+            {/* Stats row */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:18}}>
+              {[[weekLoggers.size+"","Active","👥","#6EE7B7"],[weekLogs.length+"","Logs","📊","#93C5FD"],[Math.round(weekLoggers.size/Math.max(1,totalMembers)*100)+"%","Participated","🎯","#F9A8D4"]].map(([v,l,ic,c])=>(
+                <div key={l} style={{background:"#ffffff08",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
+                  <div style={{fontSize:18,marginBottom:4}}>{ic}</div>
+                  <div style={{fontWeight:800,fontSize:18,color:c}}>{v}</div>
+                  <div style={{fontSize:9,color:"#666"}}>{l}</div>
+                </div>
+              ))}
+            </div>
+            {/* Top performer */}
+            {topUser&&<div style={{background:"#FCD34D15",border:"1px solid #FCD34D33",borderRadius:14,padding:"14px",marginBottom:14}}>
+              <div style={{fontSize:11,color:"#FCD34D",fontWeight:700,marginBottom:6}}>🥇 THIS WEEK'S TOP PERFORMER</div>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:40,height:40,borderRadius:"50%",background:`${topUser.color||"#6EE7B7"}33`,border:`2px solid ${topUser.color||"#6EE7B7"}55`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:topUser.color||"#6EE7B7",fontSize:15}}>{(topUser.name||"?").split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
+                <div>
+                  <div style={{fontWeight:700,fontSize:14}}>{topUser.name}</div>
+                  <div style={{fontSize:12,color:"#888"}}>{topPts.toLocaleString()} points this week</div>
+                </div>
+              </div>
+            </div>}
+            {!topUser&&<div style={{background:"#ffffff08",borderRadius:12,padding:"12px",marginBottom:14,textAlign:"center",color:"#888",fontSize:12}}>No activity logged this week yet.</div>}
+            {/* Physio tip */}
+            <div style={{background:"#6EE7B710",border:"1px solid #6EE7B722",borderRadius:14,padding:"14px",marginBottom:14}}>
+              <div style={{fontSize:11,color:"#6EE7B7",fontWeight:700,marginBottom:6}}>👩‍⚕️ PHYSIO TIP OF THE WEEK</div>
+              <div style={{fontSize:13,color:"#d4d4d4",lineHeight:1.6}}>{tipOfWeek}</div>
+              <div style={{fontSize:10,color:"#888",marginTop:6}}>— Physiotherapist, Brooke Cassar</div>
+            </div>
+            {/* CTA */}
+            <div style={{background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",borderRadius:12,padding:"12px 14px",textAlign:"center",border:"1px solid #6EE7B744"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e8e8f0",marginBottom:3}}>Keep the momentum going! 💪</div>
+              <div style={{fontSize:11,color:"#888"}}>Log your activity in VibeFit to stay on the leaderboard.</div>
+            </div>
+          </div>
+          {/* Footer */}
+          <div style={{borderTop:"1px solid #ffffff08",padding:"12px 20px",textAlign:"center"}}>
+            <div style={{fontSize:10,color:"#555",lineHeight:1.6}}>VibeFit · Built for workplace wellness by Physiotherapist, Brooke Cassar</div>
+          </div>
+        </div>
+
+        <div style={{marginTop:14,background:"#C4B5FD0d",border:"1px solid #C4B5FD22",borderRadius:12,padding:"12px 14px"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#C4B5FD",marginBottom:4}}>📬 Auto-send setup</div>
+          <div style={{fontSize:12,color:"#888",lineHeight:1.6}}>To send this digest automatically every Monday, connect an email service like Resend or SendGrid and deploy the <code style={{background:"#ffffff10",borderRadius:4,padding:"1px 4px",fontSize:11}}>weekly-digest</code> Supabase edge function.</div>
+        </div>
+      </div>;
+    })()}
 
     {sec==="tips"&&<div>
       <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>Post a Physio Tip</div>
@@ -929,7 +1106,7 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
 };
 
 // ── LOG MODAL ──
-const LogModal=({onClose,challenges,cu,setFeed,notify,initialChallenge})=>{
+const LogModal=({onClose,challenges,cu,setFeed,notify,initialChallenge,awardBadge,feed})=>{
   const a=challenges.filter(c=>c.active);
   const [sel,setSel]=useState(initialChallenge||a[0]);
   const [val,setVal]=useState("");
@@ -952,6 +1129,14 @@ const LogModal=({onClose,challenges,cu,setFeed,notify,initialChallenge})=>{
         comments:[],rx:{}
       },...f]);
       notify(`✅ ${sel.icon} Logged!`);
+      // Award first_log badge if this is their first ever log
+      const myLogs=(feed||[]).filter(p=>p.uid===cu.id);
+      if(myLogs.length===0&&awardBadge) awardBadge('first_log');
+      // Award challenge_complete if they hit the goal
+      if(!isHabit&&awardBadge&&sel.goal){
+        const prevPts=(feed||[]).filter(p=>p.uid===cu.id&&String(p.cid)===String(sel.id)).reduce((a,p)=>a+(p.val||0),0);
+        if(prevPts<sel.goal&&prevPts+v>=sel.goal) awardBadge('challenge_complete');
+      }
       onClose();
     } else {
       notify("❌ Couldn't save — try again.");
@@ -1022,6 +1207,8 @@ export default function App({ session }) {
   const [notifs,setNotifs]=useState([
     {id:1,type:"badge",text:"Welcome to VibeFit! 🎉",ts:N-3600000,read:false},
   ]);
+  const [teams,setTeams]=useState([]);
+  const [badges,setBadges]=useState([]);
 
   // Load profile
   useEffect(()=>{
@@ -1084,9 +1271,46 @@ export default function App({ session }) {
       .then(({data})=>{ if(data&&data.length){setLastCheckin(data[0]);setChecked(true);} });
   },[cu]);
 
+  // Load teams (company-scoped)
+  useEffect(()=>{
+    if(!cu)return;
+    const q=supabase.from('teams').select('*');
+    (cu.is_super_admin||!cu.company_id?q:q.eq('company_id',cu.company_id))
+      .then(({data})=>{ if(data) setTeams(data); });
+  },[cu?.id]);
+
+  // Load badges
+  useEffect(()=>{
+    if(!cu?.id)return;
+    supabase.from('user_badges').select('*')
+      .then(({data})=>{ if(data) setBadges(data); });
+  },[cu?.id]);
+
   const notify=useCallback(msg=>{const id=Date.now();setToasts(ts=>[...ts,{id,msg}]);setTimeout(()=>setToasts(ts=>ts.filter(x=>x.id!==id)),3000);},[]);
   const addNotif=useCallback((type,text)=>setNotifs(n=>[{id:Date.now(),type,text,ts:Date.now(),read:false},...n]),[]);
   const handleTipCreated=useCallback(tip=>setTips(t=>[tip,...t]),[]);
+
+  const awardBadge=useCallback(async(badgeType,meta={})=>{
+    if(!cu?.id)return;
+    // Award via RPC (ON CONFLICT DO NOTHING keeps it idempotent)
+    await supabase.rpc('award_badge',{p_user_id:cu.id,p_badge_type:badgeType,p_metadata:meta});
+    // Reload this user's badges and check if new
+    const{data}=await supabase.from('user_badges').select('*').eq('user_id',cu.id);
+    if(data){
+      setBadges(prev=>{
+        const hadBefore=prev.some(b=>b.user_id===cu.id&&b.badge_type===badgeType);
+        const others=prev.filter(b=>b.user_id!==cu.id);
+        if(!hadBefore){
+          const def=BADGE_DEFS[badgeType];
+          if(def){
+            addNotif('badge',`🏅 New badge: ${def.icon} ${def.label}!`);
+            setToasts(ts=>{const id=Date.now();setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),3000);return[...ts,{id,msg:`🏅 ${def.icon} ${def.label} badge earned!`}];});
+          }
+        }
+        return[...others,...data];
+      });
+    }
+  },[cu?.id,addNotif]);
 
   const handleCheckin=useCallback(async(payload)=>{
     if(!cu)return;
@@ -1100,7 +1324,26 @@ export default function App({ session }) {
     setLastCheckin(data||{...scores,readiness:r,sleep_hours:sleepHours,water_ml:waterGlasses*250,check_in_hour:nowHour,id:Date.now(),created_at:new Date().toISOString()});
     setChecked(true);
     notify("🌅 Check-in saved!");
-  },[cu,notify]);
+    // Update streak via RPC
+    const{data:newStreak}=await supabase.rpc('update_checkin_streak',{p_user_id:cu.id});
+    const streak=newStreak||1;
+    setCu(c=>({...c,checkin_streak:streak,last_checkin_date:new Date().toISOString().slice(0,10)}));
+    // Award check-in badges
+    awardBadge('first_checkin');
+    if(nowHour<8) awardBadge('early_bird');
+    if(nowHour>=21) awardBadge('night_owl');
+    if(streak>=3) awardBadge('streak_3');
+    if(streak>=7) awardBadge('streak_7');
+    if(streak>=14) awardBadge('streak_14');
+    if(streak>=30) awardBadge('streak_30');
+    // Perfect week: check if logged all 7 days in current week
+    const weekStart=new Date();weekStart.setDate(weekStart.getDate()-weekStart.getDay());weekStart.setHours(0,0,0,0);
+    const{data:weekCheckins}=await supabase.from('checkins').select('created_at').eq('user_id',cu.id).gte('created_at',weekStart.toISOString());
+    if(weekCheckins){
+      const uniqueDays=new Set(weekCheckins.map(c=>new Date(c.created_at).toDateString()));
+      if(uniqueDays.size>=7) awardBadge('perfect_week');
+    }
+  },[cu,notify,awardBadge]);
 
   if(profileLoading) return(
     <div style={{minHeight:"100vh",background:"#080810",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -1112,6 +1355,11 @@ export default function App({ session }) {
   const myR=lb.findIndex(e=>e.uid===cu?.id)+1;
   const allUsers=[cu,...users.filter(u=>u.id!==cu?.id)];
   const NAV=[["feed","Feed","📣"],["challenges","Train","🏆"],["leaderboard","Board","🥇"],["messages","DMs","💬"],["physio","Physio","🩺"],["ai","AI ✨","🤖"],...(cu?.is_admin?[["admin","Admin","⚙️"]]:[]),["profile","Me","👤"]];
+  // Nudge: how many teammates logged activity today (excluding self)
+  const todayLogs=feed.filter(p=>new Date(p.ts).toDateString()===todayStr());
+  const iLoggedToday=todayLogs.some(p=>p.uid===cu?.id);
+  const todayLoggerSet=new Set(todayLogs.filter(p=>p.uid!==cu?.id).map(p=>p.uid));
+  const nudgeCount=todayLoggerSet.size;
 
   return<>
     <style>{makeCSS(th)}</style>
@@ -1119,7 +1367,7 @@ export default function App({ session }) {
       {toasts.map(t=><div key={t.id} style={{background:"#13131f",border:"1px solid #6EE7B755",borderRadius:13,padding:"9px 18px",fontSize:13,color:"#6EE7B7",backdropFilter:"blur(12px)",whiteSpace:"nowrap",animation:"ti 3s ease both"}}>{t.msg}</div>)}
     </div>
     {showNotifs&&<><div style={{position:"fixed",inset:0,zIndex:799}} onClick={()=>setShowNotifs(false)}/><NotifsPanel notifs={notifs} onClose={()=>setShowNotifs(false)} onRead={id=>setNotifs(n=>n.map(x=>x.id===id?{...x,read:true}:x))}/></>}
-    {showLog&&<LogModal onClose={()=>setShowLog(null)} challenges={challenges} cu={cu} setFeed={setFeed} notify={notify} initialChallenge={typeof showLog==="object"?showLog:null}/>}
+    {showLog&&<LogModal onClose={()=>setShowLog(null)} challenges={challenges} cu={cu} setFeed={setFeed} notify={notify} initialChallenge={typeof showLog==="object"?showLog:null} awardBadge={awardBadge} feed={feed}/>}
 
     <div style={{maxWidth:480,margin:"0 auto",minHeight:"100vh",display:"flex",flexDirection:"column"}}>
       <div style={{padding:"13px 13px 0",position:"sticky",top:0,zIndex:40,background:`linear-gradient(to bottom,${th.bg} 85%,transparent)`}}>
@@ -1145,15 +1393,26 @@ export default function App({ session }) {
             <div style={{fontWeight:700,fontSize:17}}>Activity Feed</div>
             <Btn color="#6EE7B7" text="+ Log" onClick={()=>setShowLog(true)}/>
           </div>
+          {/* Nudge banner */}
+          {!iLoggedToday&&nudgeCount>0&&(
+            <div style={{background:"#6EE7B70d",border:"1px solid #6EE7B733",borderRadius:14,padding:"12px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:22}}>👀</span>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:13,color:"#6EE7B7"}}>{nudgeCount} teammate{nudgeCount!==1?"s":""} already logged today</div>
+                <div style={{fontSize:11,color:"#888",marginTop:1}}>Don't fall behind — log your progress!</div>
+              </div>
+              <button onClick={()=>setShowLog(true)} style={{background:"#6EE7B722",border:"1px solid #6EE7B744",color:"#6EE7B7",borderRadius:9,padding:"6px 12px",fontSize:12,fontWeight:700,flexShrink:0}}>Log 📊</button>
+            </div>
+          )}
           <FeedTab feed={feed} setFeed={setFeed} challenges={challenges} users={allUsers} cu={cu} notify={notify} tips={tips}/>
         </>}
         {tab==="challenges"&&<ChalTab challenges={challenges} feed={feed} cu={cu} onLog={ch=>setShowLog(ch)}/>}
-        {tab==="leaderboard"&&<LbTab lb={lb} users={allUsers} challenges={challenges} cu={cu}/>}
+        {tab==="leaderboard"&&<LbTab lb={lb} feed={feed} users={allUsers} challenges={challenges} cu={cu} teams={teams} badges={badges}/>}
         {tab==="messages"&&<MsgTab cu={cu} users={allUsers} messages={msgs} setMessages={setMsgs}/>}
         {tab==="physio"&&<PhysioTab cu={cu}/>}
         {tab==="ai"&&<AiTab challenges={challenges} setChallenges={setChallenges} notify={notify} cu={cu}/>}
-        {tab==="admin"&&cu?.is_admin&&<AdminTab cu={cu} users={allUsers} setUsers={setUsers} challenges={challenges} setChallenges={setChallenges} notify={notify} addNotif={addNotif} session={session} onTipCreated={handleTipCreated}/>}
-        {tab==="profile"&&<ProfileTab cu={cu} lb={lb} pd={pd} setPd={setPd} notify={notify} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin}/>}
+        {tab==="admin"&&cu?.is_admin&&<AdminTab cu={cu} users={allUsers} setUsers={setUsers} challenges={challenges} setChallenges={setChallenges} notify={notify} addNotif={addNotif} session={session} onTipCreated={handleTipCreated} feed={feed} teams={teams}/>}
+        {tab==="profile"&&<ProfileTab cu={cu} lb={lb} pd={pd} setPd={setPd} notify={notify} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin} badges={badges} awardBadge={awardBadge}/>}
       </div>
     </div>
   </>;

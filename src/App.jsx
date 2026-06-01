@@ -767,19 +767,177 @@ return<div>
 </div>;};
 
 // ── ADMIN TAB ──
-const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,session,onTipCreated,feed,teams:teamsProp})=>{
+// ── Team Dashboard (per-team isolated view) ──
+const TeamDashboard=({team,members,feed,cu,challenges,onBack,notify,session})=>{
   const [sec,setSec]=useState("overview");
+  const [inviteLink,setInviteLink]=useState("");
+  const [generating,setGenerating]=useState(false);
+  const today7=new Date(Date.now()-7*864e5);
+  const weekFeed=feed.filter(p=>new Date(p.ts)>=today7);
+  const activeIds=new Set(weekFeed.map(p=>p.uid));
+  const participation=members.length>0?Math.round(activeIds.size/members.length*100):0;
+  const avgStreak=members.length>0?Math.round(members.reduce((a,u)=>a+(u.checkin_streak||0),0)/members.length*10)/10:0;
+  const weekPts={};weekFeed.forEach(p=>{weekPts[p.uid]=(weekPts[p.uid]||0)+(p.val||1);});
+  const topEntry=Object.entries(weekPts).sort((a,b)=>b[1]-a[1])[0];
+  const topMember=topEntry?members.find(u=>u.id===topEntry[0]):null;
+  const lb=[...members].map(u=>({...u,pts:weekPts[u.id]||0})).sort((a,b)=>b.pts-a.pts);
+  const ws=Math.min(100,Math.round(participation*0.5+Math.min(100,avgStreak/14*100)*0.3+Math.min(100,weekFeed.length/Math.max(1,members.length*3)*100)*0.2));
+  const wsCol=ws>=75?"#6EE7B7":ws>=50?"#FCD34D":ws>=25?"#FB923C":"#F87171";
+  const wsLabel=ws>=75?"Thriving 💚":ws>=50?"Good 💛":ws>=25?"Developing 🟠":"Just Starting 🔴";
+  const generateInvite=async()=>{
+    setGenerating(true);
+    const code=Math.random().toString(36).slice(2,10);
+    const{error}=await supabase.from('invite_links').insert({team_id:team.id,code,created_by:session.user.id,active:true,company_id:cu.company_id,invite_type:'member'});
+    if(!error){setInviteLink(`${window.location.origin}/join/${code}`);notify("✅ Invite link created!");}
+    setGenerating(false);
+  };
+  const TSECS=[["overview","Overview","📊"],["members","Members","👥"],["activity","Activity","🏃"],["leaderboard","Board","🥇"]];
+  return<div>
+    {/* Header */}
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+      <button onClick={onBack} style={{background:"#ffffff0f",border:"1px solid #ffffff18",borderRadius:10,padding:"6px 12px",color:"#888",fontSize:12,fontWeight:700}}>← Back</button>
+      <div style={{width:42,height:42,borderRadius:13,background:`${team.color}22`,border:`1px solid ${team.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{team.emoji||"👥"}</div>
+      <div style={{flex:1}}>
+        <div style={{fontWeight:800,fontSize:17,color:team.color}}>{team.name}</div>
+        <div style={{fontSize:11,color:"#888"}}>{members.length} member{members.length!==1?"s":""} · {participation}% active this week</div>
+      </div>
+    </div>
+    {/* Tabs */}
+    <div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto"}}>
+      {TSECS.map(([id,lbl,icon])=><button key={id} onClick={()=>setSec(id)} style={{flexShrink:0,padding:"7px 12px",borderRadius:10,border:`1px solid ${sec===id?team.color+"55":"#ffffff15"}`,background:sec===id?team.color+"18":"transparent",color:sec===id?team.color:"#888",fontWeight:700,fontSize:12}}>{icon} {lbl}</button>)}
+    </div>
+    {/* OVERVIEW */}
+    {sec==="overview"&&<div>
+      <div style={{background:`linear-gradient(135deg,${team.color}10,${team.color}05)`,border:`1px solid ${team.color}22`,borderRadius:18,padding:"18px 16px",marginBottom:14}}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <div style={{position:"relative",width:72,height:72,flexShrink:0}}>
+            <svg width={72} height={72} style={{transform:"rotate(-90deg)"}}>
+              <circle cx={36} cy={36} r={30} fill="none" stroke="#ffffff0f" strokeWidth={6}/>
+              <circle cx={36} cy={36} r={30} fill="none" stroke={wsCol} strokeWidth={6} strokeDasharray={`${ws/100*188} 188`} strokeLinecap="round" style={{transition:"stroke-dasharray .8s"}}/>
+            </svg>
+            <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:16,color:wsCol}}>{ws}</div>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:"#888",marginBottom:3}}>Team Wellness Score</div>
+            <div style={{fontWeight:800,fontSize:18,color:wsCol,marginBottom:2}}>{wsLabel}</div>
+            <div style={{fontSize:11,color:"#888"}}>Participation, streaks & activity</div>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginTop:14}}>
+          {[[participation+"%","Participation",team.color],[avgStreak+"d","Avg Streak","#FCD34D"],[weekFeed.length,"Logs/week","#93C5FD"]].map(([v,l,c])=>
+            <div key={l} style={{background:"#ffffff08",borderRadius:10,padding:"8px 10px",textAlign:"center"}}>
+              <div style={{fontWeight:800,fontSize:16,color:c}}>{v}</div>
+              <div style={{fontSize:9,color:"#666"}}>{l}</div>
+            </div>
+          )}
+        </div>
+      </div>
+      {topMember&&<div className="card" style={{marginBottom:12,borderColor:`${team.color}22`}}>
+        <div style={{fontSize:11,color:"#FCD34D",fontWeight:700,marginBottom:8}}>🥇 Top performer this week</div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <Av u={topMember} s={40}/>
+          <div><div style={{fontWeight:700}}>{topMember.name}</div><div style={{fontSize:11,color:"#888"}}>{topEntry[1]} pts · 🔥{topMember.checkin_streak||0} streak</div></div>
+        </div>
+      </div>}
+      <div className="card">
+        <div style={{fontWeight:700,marginBottom:4}}>🔗 Invite to {team.name}</div>
+        <div style={{fontSize:11,color:"#888",marginBottom:10}}>Share this link to add people directly to this team.</div>
+        <Btn color={team.color} text={generating?"Creating…":"Generate Invite Link"} style={{width:"100%"}} onClick={generateInvite} disabled={generating}/>
+        {inviteLink&&<div style={{marginTop:10,background:`${team.color}10`,border:`1px solid ${team.color}33`,borderRadius:10,padding:"10px 12px"}}>
+          <div style={{fontSize:11,color:team.color,fontWeight:700,marginBottom:4}}>📋 Share this link:</div>
+          <div style={{fontSize:11,color:"#aaa",wordBreak:"break-all",marginBottom:8}}>{inviteLink}</div>
+          <button onClick={()=>{navigator.clipboard.writeText(inviteLink);notify("📋 Copied!");}} style={{background:`${team.color}22`,border:`1px solid ${team.color}44`,color:team.color,borderRadius:8,padding:"5px 12px",fontSize:12,fontWeight:700}}>Copy Link</button>
+        </div>}
+      </div>
+    </div>}
+    {/* MEMBERS */}
+    {sec==="members"&&<div>
+      {members.length===0
+        ?<div style={{textAlign:"center",color:"#888",padding:"40px 0"}}><div style={{fontSize:40,marginBottom:10}}>👥</div>No members in this team yet.</div>
+        :members.map(u=>{
+          const isActive=activeIds.has(u.id);
+          const lastLog=feed.filter(p=>p.uid===u.id).sort((a,b)=>b.ts-a.ts)[0];
+          return<div key={u.id} className="card" style={{display:"flex",gap:10,alignItems:"center",marginBottom:8,borderColor:isActive?`${team.color}30`:undefined}}>
+            <Av u={u} s={40}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:13}}>{u.name}</div>
+              <div style={{fontSize:11,color:"#888"}}>{u.role||"Team member"}</div>
+              {lastLog&&<div style={{fontSize:10,color:"#555"}}>Last active {ago(lastLog.ts)}</div>}
+            </div>
+            <div style={{textAlign:"right",flexShrink:0}}>
+              {(u.checkin_streak||0)>0&&<div style={{fontSize:12,fontWeight:700,color:"#FB923C"}}>🔥 {u.checkin_streak}</div>}
+              {isActive&&<div style={{width:7,height:7,borderRadius:"50%",background:team.color,marginLeft:"auto",marginTop:2}}/>}
+            </div>
+          </div>;
+        })
+      }
+    </div>}
+    {/* ACTIVITY */}
+    {sec==="activity"&&<div>
+      {feed.length===0
+        ?<div style={{textAlign:"center",color:"#888",padding:"40px 0"}}><div style={{fontSize:40,marginBottom:10}}>🏃</div>No activity from this team yet.</div>
+        :feed.slice(0,30).map((p,i)=>{
+          const u=members.find(m=>m.id===p.uid);
+          const ch=challenges.find(c=>String(c.id)===String(p.cid));
+          return<div key={i} className="card" style={{display:"flex",gap:9,alignItems:"center",marginBottom:6,padding:"10px 12px"}}>
+            <div style={{fontSize:18,flexShrink:0}}>{ch?.icon||"📊"}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:12,fontWeight:700}}>{u?.name||"Unknown"}</div>
+              <div style={{fontSize:11,color:"#888"}}>{ch?.title||"Activity"}{p.val>0?` · ${p.val}${ch?.unit?" "+ch.unit:""}`:""}</div>
+              {p.note&&<div style={{fontSize:10,color:"#555",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>"{p.note}"</div>}
+            </div>
+            <div style={{fontSize:10,color:"#555",flexShrink:0}}>{ago(p.ts)}</div>
+          </div>;
+        })
+      }
+    </div>}
+    {/* LEADERBOARD */}
+    {sec==="leaderboard"&&<div>
+      {lb.length===0
+        ?<div style={{textAlign:"center",color:"#888",padding:"40px 0"}}><div style={{fontSize:40,marginBottom:10}}>🥇</div>No activity this week.</div>
+        :<>
+          {lb.length>=2&&<div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:6,marginBottom:18,padding:"0 8px"}}>
+            {[lb[1],lb[0],lb[2]].filter(Boolean).map((u,pi)=>{
+              const medal=["🥈","🥇","🥉"][pi];
+              const ht=[70,90,58][pi];
+              const col=["#9CA3AF","#FCD34D","#CD7F32"][pi];
+              return<div key={u.id} style={{flex:1,textAlign:"center"}}>
+                <div style={{fontSize:11,marginBottom:3}}>{medal}</div>
+                <Av u={u} s={36}/>
+                <div style={{fontSize:10,fontWeight:700,color:"#ccc",margin:"3px 0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name?.split(" ")[0]}</div>
+                <div style={{height:ht,background:`${u.color||team.color}1a`,border:`1px solid ${u.color||team.color}33`,borderRadius:"6px 6px 0 0",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <span style={{fontSize:11,fontWeight:700,color:col}}>{u.pts}</span>
+                </div>
+              </div>;
+            })}
+          </div>}
+          {lb.map((u,i)=><div key={u.id} className="card" style={{display:"flex",gap:10,alignItems:"center",marginBottom:6,borderColor:i===0?`${team.color}44`:undefined}}>
+            <div style={{fontWeight:900,fontSize:15,width:24,textAlign:"center",flexShrink:0,color:i===0?"#FCD34D":i===1?"#9CA3AF":i===2?"#CD7F32":"#555"}}>
+              {i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`}
+            </div>
+            <Av u={u} s={34}/>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700,fontSize:13}}>{u.name}</div>
+              <div style={{fontSize:11,color:"#888"}}>{u.pts} pts this week{u.checkin_streak>0?` · 🔥${u.checkin_streak}`:""}</div>
+            </div>
+          </div>)}
+        </>
+      }
+    </div>}
+  </div>;
+};
+
+const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,session,onTipCreated,feed,teams:teamsProp})=>{
+  const [view,setView]=useState("home");   // "home" | "team" | "tools"
+  const [selectedTeam,setSelectedTeam]=useState(null);
+  const [toolSec,setToolSec]=useState("analytics");
   const [chF,setChF]=useState({title:"",icon:"🏃",unit:"",goal:"",color:"#6EE7B7",type:"count",physioNote:""});
   const [tipF,setTipF]=useState({title:"",content:"",body_part:"general",emoji:"💡",color:"#6EE7B7"});
-  const [inviteLink,setInviteLink]=useState("");
   const [teams,setTeams]=useState([]);
   const [newTeam,setNewTeam]=useState({name:"",emoji:"👥",color:"#6EE7B7"});
-  const [generating,setGenerating]=useState(false);
   const [savingTip,setSavingTip]=useState(false);
-  // Analytics
   const [analytics,setAnalytics]=useState(null);
   const [analyticsLoading,setAnalyticsLoading]=useState(false);
-  // Super admin
   const [companies,setCompanies]=useState([]);
   const [newCo,setNewCo]=useState({name:"",emoji:"🏢",color:"#6EE7B7"});
   const [creatingCo,setCreatingCo]=useState(false);
@@ -792,31 +950,38 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
   },[cu.company_id]);
 
   useEffect(()=>{
-    if(sec!=='analytics'||!cu.company_id)return;
+    if(view!=='tools'||toolSec!=='analytics'||!cu.company_id)return;
     setAnalyticsLoading(true);
     supabase.rpc('get_company_analytics',{company_uuid:cu.company_id})
       .then(({data})=>{ if(data) setAnalytics(data); setAnalyticsLoading(false); });
-  },[sec,cu.company_id]);
+  },[view,toolSec,cu.company_id]);
 
   useEffect(()=>{
-    if(sec!=='superadmin'||!cu.is_super_admin)return;
+    if(view!=='tools'||toolSec!=='superadmin'||!cu.is_super_admin)return;
     supabase.from('companies').select('*, profiles(count)').then(({data})=>{ if(data) setCompanies(data); });
-  },[sec,cu.is_super_admin]);
+  },[view,toolSec,cu.is_super_admin]);
 
   const createTeam=async()=>{
     if(!newTeam.name.trim())return;
-    const {data,error}=await supabase.from('teams').insert({name:newTeam.name,emoji:newTeam.emoji,color:newTeam.color,company_id:cu.company_id}).select().single();
+    const{data,error}=await supabase.from('teams').insert({name:newTeam.name,emoji:newTeam.emoji,color:newTeam.color,company_id:cu.company_id}).select().single();
     if(!error&&data){setTeams(t=>[...t,data]);setNewTeam({name:"",emoji:"👥",color:"#6EE7B7"});notify(`✅ Team "${data.name}" created!`);}
   };
-
-  const generateInviteLink=async(teamId)=>{
-    setGenerating(true);
-    const code=Math.random().toString(36).slice(2,10);
-    const {error}=await supabase.from('invite_links').insert({team_id:teamId,code,created_by:session.user.id,active:true,company_id:cu.company_id,invite_type:'member'});
-    if(!error){const link=`${window.location.origin}/join/${code}`;setInviteLink(link);notify("✅ Invite link created!");}
-    setGenerating(false);
+  const createCh=async()=>{
+    if(!chF.title||!chF.goal)return;
+    const start=new Date().toISOString().split("T")[0];
+    const end=new Date(Date.now()+7*864e5).toISOString().split("T")[0];
+    const{data,error}=await supabase.from('challenges').insert({title:chF.title,icon:chF.icon,unit:chF.unit,goal:parseFloat(chF.goal),color:chF.color,type:chF.type,physio_note:chF.physioNote,active:true,start_date:start,end_date:end,company_id:cu.company_id}).select().single();
+    if(!error&&data){setChallenges(c=>[...c,{...data,desc:data.description,physioNote:data.physio_note,endDate:data.end_date}]);setChF({title:"",icon:"🏃",unit:"",goal:"",color:"#6EE7B7",type:"count",physioNote:""});notify("✅ Challenge created!");addNotif("challenge",`New challenge: ${data.title}`);}
+    else notify("❌ Couldn't save challenge — try again.");
   };
-
+  const createTip=async()=>{
+    if(!tipF.title||!tipF.content)return;
+    setSavingTip(true);
+    const{data,error}=await supabase.from('physio_tips').insert({title:tipF.title,content:tipF.content,body_part:tipF.body_part,emoji:tipF.emoji,color:BP_COLORS[tipF.body_part]||"#6EE7B7",author_id:session.user.id,company_id:cu.company_id}).select().single();
+    if(!error&&data){onTipCreated(data);setTipF({title:"",content:"",body_part:"general",emoji:"💡",color:"#6EE7B7"});notify("✅ Physio tip posted to feed!");}
+    else notify("❌ Couldn't save tip, try again.");
+    setSavingTip(false);
+  };
   const createCompany=async()=>{
     if(!newCo.name.trim())return;
     setCreatingCo(true);
@@ -824,382 +989,246 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
     if(!error&&data){setCompanies(c=>[...c,data]);setNewCo({name:"",emoji:"🏢",color:"#6EE7B7"});notify(`✅ Company "${data.name}" created!`);}
     setCreatingCo(false);
   };
-
   const generateAdminInvite=async(companyId)=>{
     const code=Math.random().toString(36).slice(2,10);
     const{error}=await supabase.from('invite_links').insert({company_id:companyId,code,created_by:session.user.id,active:true,invite_type:'admin'});
-    if(!error){
-      const link=`${window.location.origin}/join/${code}`;
-      setAdminInviteLink(m=>({...m,[companyId]:link}));
-      notify("✅ Admin invite created!");
-    }
+    if(!error){setAdminInviteLink(m=>({...m,[companyId]:`${window.location.origin}/join/${code}`}));notify("✅ Admin invite created!");}
   };
 
-  const createCh=async()=>{
-    if(!chF.title||!chF.goal)return;
-    const start=new Date().toISOString().split("T")[0];
-    const end=new Date(Date.now()+7*864e5).toISOString().split("T")[0];
-    const{data,error}=await supabase.from('challenges').insert({
-      title:chF.title,icon:chF.icon,unit:chF.unit,
-      goal:parseFloat(chF.goal),color:chF.color,type:chF.type,
-      physio_note:chF.physioNote,active:true,
-      start_date:start,end_date:end,company_id:cu.company_id
-    }).select().single();
-    if(!error&&data){
-      setChallenges(c=>[...c,{...data,desc:data.description,physioNote:data.physio_note,endDate:data.end_date}]);
-      setChF({title:"",icon:"🏃",unit:"",goal:"",color:"#6EE7B7",type:"count",physioNote:""});
-      notify("✅ Challenge created!");
-      addNotif("challenge",`New challenge: ${data.title}`);
-    } else {
-      notify("❌ Couldn't save challenge — try again.");
-    }
-  };
+  // ── Team dashboard view ──
+  if(view==="team"&&selectedTeam){
+    const members=users.filter(u=>u.team_id===selectedTeam.id);
+    const memberIds=new Set(members.map(u=>u.id));
+    const teamFeed=(feed||[]).filter(p=>memberIds.has(p.uid));
+    return<TeamDashboard team={selectedTeam} members={members} feed={teamFeed} cu={cu} challenges={challenges} onBack={()=>{setView("home");setSelectedTeam(null);}} notify={notify} session={session}/>;
+  }
 
-  const createTip=async()=>{
-    if(!tipF.title||!tipF.content)return;
-    setSavingTip(true);
-    const {data,error}=await supabase.from('physio_tips').insert({
-      title:tipF.title,content:tipF.content,body_part:tipF.body_part,
-      emoji:tipF.emoji,color:BP_COLORS[tipF.body_part]||"#6EE7B7",
-      author_id:session.user.id,company_id:cu.company_id
-    }).select().single();
-    if(!error&&data){
-      onTipCreated(data);
-      setTipF({title:"",content:"",body_part:"general",emoji:"💡",color:"#6EE7B7"});
-      notify("✅ Physio tip posted to feed!");
-    } else {
-      notify("❌ Couldn't save tip, try again.");
-    }
-    setSavingTip(false);
-  };
-
-  const SECS=[
-    ["overview","Overview","🏠"],["analytics","Analytics","📊"],
-    ["insights","Insights","🧠"],["digest","Digest","📧"],
-    ["tips","Physio Tips","💡"],["teams","Teams","👥"],["challenges","Challenges","🏆"],
-    ...(cu.is_super_admin?[["superadmin","Super Admin","🌐"]]:[])]
-
-  return<div>
-    <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:12}}><span style={{fontWeight:700,fontSize:17}}>Admin Panel</span><Pill color="#C4B5FD" text="ADMIN"/>{cu.is_super_admin&&<Pill color="#FCD34D" text="SUPER ADMIN"/>}</div>
-    <div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto"}}>{SECS.map(([id,lbl,icon])=><button key={id} onClick={()=>setSec(id)} style={{flexShrink:0,padding:"7px 12px",borderRadius:10,border:`1px solid ${sec===id?"#C4B5FD55":"#ffffff15"}`,background:sec===id?"#C4B5FD18":"transparent",color:sec===id?"#C4B5FD":"#888",fontWeight:700,fontSize:12,display:"flex",gap:4,alignItems:"center"}}><span>{icon}</span>{lbl}</button>)}</div>
-
-    {sec==="overview"&&(()=>{
-      // Company Wellness Score (0–100)
-      const today7=new Date(Date.now()-7*864e5);
-      const recentLogs=(feed||[]).filter(p=>new Date(p.ts)>=today7);
-      const recentLoggers=new Set(recentLogs.map(p=>p.uid));
-      const totalMembers=users.length+1;
-      const partRate=totalMembers>0?recentLoggers.size/totalMembers:0;
-      const allProfiles=[...users];
-      const avgStreak=allProfiles.length>0?allProfiles.reduce((a,u)=>a+(u.checkin_streak||0),0)/allProfiles.length:0;
-      const wellnessScore=Math.min(100,Math.round(partRate*100*0.5+Math.min(1,avgStreak/14)*100*0.3+Math.min(1,(recentLogs.length/(totalMembers*3)))*100*0.2));
-      const wsColor=wellnessScore>=75?"#6EE7B7":wellnessScore>=50?"#FCD34D":wellnessScore>=25?"#FB923C":"#F87171";
-      const wsLabel=wellnessScore>=75?"Thriving 💚":wellnessScore>=50?"Good 💛":wellnessScore>=25?"Developing 🟠":"Just Starting 🔴";
-      return<div>
-        {/* Wellness Score hero */}
-        <div style={{background:"linear-gradient(135deg,#6EE7B710,#93C5FD08)",border:"1px solid #6EE7B722",borderRadius:18,padding:"18px 16px",marginBottom:14}}>
-          <div style={{display:"flex",alignItems:"center",gap:14}}>
-            <div style={{position:"relative",width:72,height:72,flexShrink:0}}>
-              <svg width={72} height={72} style={{transform:"rotate(-90deg)"}}>
-                <circle cx={36} cy={36} r={30} fill="none" stroke="#ffffff0f" strokeWidth={6}/>
-                <circle cx={36} cy={36} r={30} fill="none" stroke={wsColor} strokeWidth={6} strokeDasharray={`${(wellnessScore/100)*188} 188`} strokeLinecap="round" style={{transition:"stroke-dasharray .8s"}}/>
-              </svg>
-              <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:16,color:wsColor}}>{wellnessScore}</div>
+  // ── Admin tools view ──
+  if(view==="tools"){
+    const today7=new Date(Date.now()-7*864e5);
+    const TSECS=[["analytics","Analytics","📊"],["tips","Physio Tips","💡"],["challenges","Challenges","🏆"],["insights","Insights","🧠"],["digest","Digest","📧"],["teams","Teams","👥"],...(cu.is_super_admin?[["superadmin","Super Admin","🌐"]]:[])]
+    const weekLogs=(feed||[]).filter(p=>new Date(p.ts)>=today7);
+    const weekLoggers=new Set(weekLogs.map(p=>p.uid));
+    const totalMembers=users.length+1;
+    const scorePts={};weekLogs.forEach(p=>{scorePts[p.uid]=(scorePts[p.uid]||0)+(p.val||0);});
+    const topEntry=Object.entries(scorePts).sort((a,b)=>b[1]-a[1])[0];
+    const topUser=topEntry?users.find(u=>u.id===topEntry[0]):null;
+    const topPts=topEntry?topEntry[1]:0;
+    const TIPS=["Take a 5-minute walk every hour — your lower back will thank you.","Roll your shoulders back 10 times to reset your posture right now.","Drink a full glass of water before your next meeting.","Try the 20-20-20 rule: every 20 minutes, look 20 feet away for 20 seconds.","A 2-minute standing stretch at midday reduces afternoon fatigue by 30%."];
+    const tipOfWeek=TIPS[new Date().getDay()%TIPS.length];
+    return<div>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+        <button onClick={()=>setView("home")} style={{background:"#ffffff0f",border:"1px solid #ffffff18",borderRadius:10,padding:"6px 12px",color:"#888",fontSize:12,fontWeight:700}}>← Teams</button>
+        <span style={{fontWeight:700,fontSize:16}}>Admin Tools</span>
+        {cu.is_super_admin&&<Pill color="#FCD34D" text="SUPER ADMIN"/>}
+      </div>
+      <div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto"}}>
+        {TSECS.map(([id,lbl,icon])=><button key={id} onClick={()=>setToolSec(id)} style={{flexShrink:0,padding:"7px 12px",borderRadius:10,border:`1px solid ${toolSec===id?"#C4B5FD55":"#ffffff15"}`,background:toolSec===id?"#C4B5FD18":"transparent",color:toolSec===id?"#C4B5FD":"#888",fontWeight:700,fontSize:12}}>{icon} {lbl}</button>)}
+      </div>
+      {toolSec==="analytics"&&<div>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Company Analytics</div>
+        <div style={{fontSize:12,color:"#888",marginBottom:14}}>Last 7 days across all teams</div>
+        {analyticsLoading&&<div style={{textAlign:"center",padding:"30px 0",color:"#888",fontSize:13}}>Loading…</div>}
+        {!analyticsLoading&&analytics&&<>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+            {[[analytics.active_users_week,"Active Users","this week","#6EE7B7","👥"],[analytics.total_logs_week,"Activity Logs","this week","#93C5FD","📊"],[analytics.checkin_count_week,"Check-Ins","this week","#F9A8D4","🌅"],[analytics.avg_readiness_week!=null?analytics.avg_readiness_week+"":"–","Avg Readiness","this week","#FCD34D","⚡"]].map(([v,l,sub,c,ic])=>
+              <div key={l} className="card" style={{padding:14}}><div style={{fontSize:20,marginBottom:6}}>{ic}</div><div style={{fontWeight:800,fontSize:22,color:c,marginBottom:2}}>{v}</div><div style={{fontSize:11,fontWeight:700,color:"#bbb"}}>{l}</div><div style={{fontSize:10,color:"#555"}}>{sub}</div></div>
+            )}
+          </div>
+          {analytics.total_members>0&&<div className="card" style={{marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><div style={{fontWeight:700,fontSize:13}}>Participation Rate</div><div style={{fontSize:12,color:"#6EE7B7",fontWeight:700}}>{Math.round((analytics.active_users_week/analytics.total_members)*100)}%</div></div>
+            <div style={{background:"#ffffff08",borderRadius:6,height:8}}><div style={{width:`${Math.min(100,(analytics.active_users_week/analytics.total_members)*100)}%`,height:"100%",background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",borderRadius:6,transition:"width .6s"}}/></div>
+            <div style={{fontSize:11,color:"#888",marginTop:6}}>{analytics.active_users_week} of {analytics.total_members} members logged activity this week</div>
+          </div>}
+          {Array.isArray(analytics.daily_logs)&&analytics.daily_logs.length>0&&<div className="card">
+            <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>Daily Activity (7 days)</div>
+            <div style={{display:"flex",gap:4,alignItems:"flex-end",height:60}}>
+              {(()=>{const days=[];const today=new Date();for(let i=6;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+              const maxVal=Math.max(1,...analytics.daily_logs.map(d=>d.count||0));
+              return days.map(day=>{const entry=analytics.daily_logs.find(d=>d.log_date===day);const count=entry?.count||0;const h=Math.max(4,(count/maxVal)*52);const dow=new Date(day).toLocaleDateString('en',{weekday:'short'}).slice(0,1);
+              return<div key={day} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                <div style={{fontSize:9,color:count>0?"#6EE7B7":"#555",fontWeight:700}}>{count>0?count:""}</div>
+                <div style={{width:"100%",height:h,background:count>0?"linear-gradient(180deg,#6EE7B7,#93C5FD40)":"#ffffff08",borderRadius:"3px 3px 0 0",transition:"height .4s"}}/>
+                <div style={{fontSize:9,color:"#555"}}>{dow}</div>
+              </div>;});})()}
             </div>
-            <div>
-              <div style={{fontSize:11,color:"#888",marginBottom:3}}>Company Wellness Score</div>
-              <div style={{fontWeight:800,fontSize:20,color:wsColor,marginBottom:2}}>{wsLabel}</div>
-              <div style={{fontSize:11,color:"#888"}}>Based on participation, streaks & activity</div>
-            </div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginTop:14}}>
-            {[["Participation",Math.round(partRate*100)+"%","#6EE7B7"],["Avg Streak",avgStreak.toFixed(1)+"d","#FCD34D"],["Logs / week",recentLogs.length,"#93C5FD"]].map(([l,v,c])=>(
-              <div key={l} style={{background:"#ffffff08",borderRadius:10,padding:"8px 10px",textAlign:"center"}}>
-                <div style={{fontWeight:800,fontSize:16,color:c}}>{v}</div>
-                <div style={{fontSize:9,color:"#666"}}>{l}</div>
-              </div>
-            ))}
-          </div>
+          </div>}
+        </>}
+        {!analyticsLoading&&!analytics&&<div style={{textAlign:"center",padding:"30px 0",color:"#888",fontSize:13}}><div style={{fontSize:32,marginBottom:8}}>📊</div>No activity data yet.</div>}
+      </div>}
+      {toolSec==="tips"&&<div>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Post a Physio Tip</div>
+        <div style={{fontSize:12,color:"#888",marginBottom:14}}>Tips appear in everyone's feed instantly.</div>
+        <div className="card">
+          <Inp label="Title" placeholder="e.g. Why your hips are tight from sitting" value={tipF.title} onChange={e=>setTipF(f=>({...f,title:e.target.value}))}/>
+          <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:4}}>Body Area</div><select value={tipF.body_part} onChange={e=>setTipF(f=>({...f,body_part:e.target.value}))} style={{width:"100%"}}>{Object.entries(BP_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></div>
+          <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:4}}>Tip Content</div><textarea value={tipF.content} onChange={e=>setTipF(f=>({...f,content:e.target.value}))} placeholder="Share your physio knowledge…" rows={5} style={{resize:"none",width:"100%"}}/></div>
+          <Inp label="Emoji" value={tipF.emoji} onChange={e=>setTipF(f=>({...f,emoji:e.target.value}))} style={{width:60}}/>
+          {tipF.title&&tipF.content&&<div style={{background:`${BP_COLORS[tipF.body_part]||"#6EE7B7"}0d`,border:`1px solid ${BP_COLORS[tipF.body_part]||"#6EE7B7"}22`,borderRadius:10,padding:"10px 12px",marginBottom:12}}><div style={{fontSize:10,color:"#888",marginBottom:4}}>Preview</div><div style={{fontWeight:700,fontSize:13,marginBottom:3}}>{tipF.title}</div><div style={{fontSize:11,color:"#aaa"}}>{tipF.content.slice(0,80)}{tipF.content.length>80?"…":""}</div></div>}
+          <Btn color="#6EE7B7" text={savingTip?"Posting…":"💡 Post to Feed"} style={{width:"100%",padding:"11px"}} onClick={createTip} disabled={savingTip||!tipF.title||!tipF.content}/>
         </div>
-        <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:14}}>
-          {[[totalMembers,"Members","#6EE7B7"],[teams.length,"Teams","#93C5FD"],[challenges.filter(c=>c.active).length,"Active","#F9A8D4"]].map(([v,l,c])=><div key={l} className="card" style={{flex:"1 1 80px",padding:12}}><div style={{fontWeight:800,fontSize:22,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}
+      </div>}
+      {toolSec==="challenges"&&<div>
+        <div className="card" style={{marginBottom:12}}>
+          <div style={{fontWeight:700,marginBottom:10}}>Create Challenge</div>
+          <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:6}}>Type</div><div style={{display:"flex",gap:6}}>{[["count","📊 Count","Log a number"],["habit","✅ Habit","Daily checklist"]].map(([v,lbl,sub])=><button key={v} onClick={()=>setChF(f=>({...f,type:v}))} style={{flex:1,padding:"9px 8px",borderRadius:10,border:`1px solid ${chF.type===v?"#F9A8D455":"#ffffff15"}`,background:chF.type===v?"#F9A8D418":"transparent",textAlign:"left"}}><div style={{fontWeight:700,fontSize:12,color:chF.type===v?"#F9A8D4":"#888"}}>{lbl}</div><div style={{fontSize:10,color:"#555",marginTop:2}}>{sub}</div></button>)}</div></div>
+          <div style={{display:"flex",gap:7}}><Inp label="Title" value={chF.title} onChange={e=>setChF(f=>({...f,title:e.target.value}))} style={{flex:3}}/><Inp label="Icon" value={chF.icon} onChange={e=>setChF(f=>({...f,icon:e.target.value}))} style={{flex:1}}/></div>
+          {chF.type==="count"&&<div style={{display:"flex",gap:7}}><Inp label="Unit" value={chF.unit} onChange={e=>setChF(f=>({...f,unit:e.target.value}))} style={{flex:1}}/><Inp label="Goal" value={chF.goal} onChange={e=>setChF(f=>({...f,goal:e.target.value}))} type="number" style={{flex:1}}/></div>}
+          <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:5}}>Color</div><div style={{display:"flex",gap:5}}>{TC.map(c=><button key={c} onClick={()=>setChF(f=>({...f,color:c}))} style={{width:24,height:24,borderRadius:"50%",background:c,border:`3px solid ${chF.color===c?"#fff":"transparent"}`}}/>)}</div></div>
+          <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:4}}>Physio Note <span style={{color:"#555"}}>(optional)</span></div><textarea value={chF.physioNote} onChange={e=>setChF(f=>({...f,physioNote:e.target.value}))} placeholder="Why does this challenge matter?" rows={3} style={{resize:"none",width:"100%"}}/></div>
+          <Btn color="#F9A8D4" text="Launch 🚀" style={{width:"100%"}} onClick={createCh}/>
         </div>
-        <div className="card"><div style={{fontWeight:700,marginBottom:9}}>Quick Actions</div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}><Btn color="#93C5FD" text="📊 Analytics" onClick={()=>setSec("analytics")}/><Btn color="#C4B5FD" text="🧠 Insights" onClick={()=>setSec("insights")}/><Btn color="#6EE7B7" text="💡 Post Tip" onClick={()=>setSec("tips")}/><Btn color="#F9A8D4" text="🏆 Challenge" onClick={()=>setSec("challenges")}/><Btn color="#FCD34D" text="📧 Digest" onClick={()=>setSec("digest")}/></div></div>
-      </div>;
-    })()}
-
-    {sec==="analytics"&&<div>
-      <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>Company Analytics</div>
-      <div style={{fontSize:12,color:"#888",marginBottom:14}}>Last 7 days · {cu.company_id}</div>
-      {analyticsLoading&&<div style={{textAlign:"center",padding:"30px 0",color:"#888",fontSize:13}}>Loading analytics…</div>}
-      {!analyticsLoading&&analytics&&<>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
-          {[
-            [analytics.active_users_week,"Active Users","this week","#6EE7B7","👥"],
-            [analytics.total_logs_week,"Activity Logs","this week","#93C5FD","📊"],
-            [analytics.checkin_count_week,"Check-Ins","this week","#F9A8D4","🌅"],
-            [analytics.avg_readiness_week!=null?analytics.avg_readiness_week+"":"–","Avg Readiness","this week","#FCD34D","⚡"],
-          ].map(([v,l,sub,c,ic])=><div key={l} className="card" style={{padding:14}}>
-            <div style={{fontSize:20,marginBottom:6}}>{ic}</div>
-            <div style={{fontWeight:800,fontSize:22,color:c,marginBottom:2}}>{v}</div>
-            <div style={{fontSize:11,fontWeight:700,color:"#bbb"}}>{l}</div>
-            <div style={{fontSize:10,color:"#555"}}>{sub}</div>
-          </div>)}
-        </div>
-        {analytics.total_members>0&&<div className="card" style={{marginBottom:12}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
-            <div style={{fontWeight:700,fontSize:13}}>Participation Rate</div>
-            <div style={{fontSize:12,color:"#6EE7B7",fontWeight:700}}>{Math.round((analytics.active_users_week/analytics.total_members)*100)}%</div>
-          </div>
-          <div style={{background:"#ffffff08",borderRadius:6,height:8}}>
-            <div style={{width:`${Math.min(100,(analytics.active_users_week/analytics.total_members)*100)}%`,height:"100%",background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",borderRadius:6,transition:"width .6s"}}/>
-          </div>
-          <div style={{fontSize:11,color:"#888",marginTop:6}}>{analytics.active_users_week} of {analytics.total_members} members logged activity this week</div>
-        </div>}
-        {Array.isArray(analytics.daily_logs)&&analytics.daily_logs.length>0&&<div className="card">
-          <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>Daily Activity (7 days)</div>
-          <div style={{display:"flex",gap:4,alignItems:"flex-end",height:60}}>
-            {(()=>{const days=[];const today=new Date();for(let i=6;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
-            const maxVal=Math.max(1,...analytics.daily_logs.map(d=>d.count||0));
-            return days.map((day,idx)=>{const entry=analytics.daily_logs.find(d=>d.log_date===day);const count=entry?.count||0;const h=Math.max(4,(count/maxVal)*52);const dow=new Date(day).toLocaleDateString('en',{weekday:'short'}).slice(0,1);
-            return<div key={day} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
-              <div style={{fontSize:9,color:count>0?"#6EE7B7":"#555",fontWeight:700}}>{count>0?count:""}</div>
-              <div style={{width:"100%",height:h,background:count>0?"linear-gradient(180deg,#6EE7B7,#93C5FD40)":"#ffffff08",borderRadius:"3px 3px 0 0",transition:"height .4s"}}/>
-              <div style={{fontSize:9,color:"#555"}}>{dow}</div>
-            </div>;})})()}
-          </div>
-        </div>}
-        {!analyticsLoading&&analytics&&challenges.filter(c=>c.active).length>0&&<div className="card" style={{marginTop:8}}>
-          <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>Challenge Engagement</div>
-          {challenges.filter(c=>c.active).map(ch=>{
-            const logsForCh=(analytics.daily_logs||[]).length; // rough proxy
-            const uniqueUsers=Math.min(analytics.active_users_week,analytics.total_members);
-            const pct=analytics.total_members>0?Math.round((uniqueUsers/analytics.total_members)*100):0;
-            return<div key={ch.id} style={{marginBottom:10}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                <div style={{fontSize:12,fontWeight:700}}>{ch.icon} {ch.title}</div>
-                <div style={{fontSize:11,color:ch.color,fontWeight:700}}>{pct}%</div>
-              </div>
-              <div style={{background:"#ffffff08",borderRadius:4,height:5}}>
-                <div style={{width:`${pct}%`,height:"100%",background:ch.color,borderRadius:4,transition:"width .6s"}}/>
-              </div>
-            </div>;
-          })}
-        </div>}
-      </>}
-      {!analyticsLoading&&!analytics&&<div style={{textAlign:"center",padding:"30px 0",color:"#888",fontSize:13}}><div style={{fontSize:32,marginBottom:8}}>📊</div>No activity data yet — get your team logging!</div>}
-    </div>}
-
-    {sec==="insights"&&<InsightsSection cu={cu} session={session} users={users}/>}
-
-    {sec==="digest"&&(()=>{
-      // Build weekly digest preview from available data
-      const today7=new Date(Date.now()-7*864e5);
-      const weekLogs=(feed||[]).filter(p=>new Date(p.ts)>=today7);
-      const weekLoggers=new Set(weekLogs.map(p=>p.uid));
-      const allProfiles=users;
-      const totalMembers=users.length+1;
-      // Top scorer this week
-      const scorePts={};
-      weekLogs.forEach(p=>{scorePts[p.uid]=(scorePts[p.uid]||0)+(p.val||0);});
-      const topEntry=Object.entries(scorePts).sort((a,b)=>b[1]-a[1])[0];
-      const topUser=topEntry?allProfiles.find(u=>u.id===topEntry[0]):null;
-      const topPts=topEntry?topEntry[1]:0;
-      // Avg readiness from last 7 checkins
-      const weekDateStr=today7.toISOString().slice(0,10);
-      const TIPS=["Take a 5-minute walk every hour — your lower back will thank you.","Roll your shoulders back 10 times to reset your posture right now.","Drink a full glass of water before your next meeting.","Try the 20-20-20 rule: every 20 minutes, look 20 feet away for 20 seconds.","A 2-minute standing stretch at midday reduces afternoon fatigue by 30%."];
-      const tipOfWeek=TIPS[new Date().getDay()%TIPS.length];
-      return<div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-          <div style={{fontWeight:700,fontSize:16}}>Weekly Digest Preview</div>
-          <span style={{fontSize:10,background:"#6EE7B722",border:"1px solid #6EE7B733",borderRadius:8,padding:"2px 8px",color:"#6EE7B7",fontWeight:700}}>PREVIEW</span>
-        </div>
-        <div style={{fontSize:12,color:"#888",marginBottom:16}}>This is what your team would receive every Monday morning.</div>
-
-        {/* Email preview card */}
+        {challenges.map(ch=><div key={ch.id} className="card" style={{marginBottom:8,display:"flex",gap:9,alignItems:"center",opacity:ch.active?1:.6}}>
+          <span style={{fontSize:20}}>{ch.icon}</span>
+          <div style={{flex:1}}><div style={{fontWeight:700,color:ch.color,fontSize:13}}>{ch.title}</div><div style={{fontSize:11,color:"#888"}}>{ch.type==="habit"?"Habit ✅":ch.goal?.toLocaleString()+" "+ch.unit}</div></div>
+          <button onClick={async()=>{await supabase.from('challenges').update({active:!ch.active}).eq('id',ch.id);setChallenges(c=>c.map(x=>x.id===ch.id?{...x,active:!x.active}:x));}} style={{background:`${ch.active?"#FCD34D":"#6EE7B7"}15`,border:`1px solid ${ch.active?"#FCD34D":"#6EE7B7"}33`,color:ch.active?"#FCD34D":"#6EE7B7",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700}}>{ch.active?"Pause":"Resume"}</button>
+        </div>)}
+      </div>}
+      {toolSec==="insights"&&<InsightsSection cu={cu} session={session} users={users}/>}
+      {toolSec==="digest"&&<div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><div style={{fontWeight:700,fontSize:15}}>Weekly Digest Preview</div><span style={{fontSize:10,background:"#6EE7B722",border:"1px solid #6EE7B733",borderRadius:8,padding:"2px 8px",color:"#6EE7B7",fontWeight:700}}>PREVIEW</span></div>
+        <div style={{fontSize:12,color:"#888",marginBottom:16}}>What your team receives every Monday morning.</div>
         <div style={{background:"#13131f",border:"1px solid #ffffff15",borderRadius:18,overflow:"hidden"}}>
-          {/* Email header */}
           <div style={{background:"linear-gradient(135deg,#6EE7B722,#93C5FD15)",borderBottom:"1px solid #ffffff10",padding:"20px 20px 16px",textAlign:"center"}}>
             <div style={{fontWeight:900,fontSize:22,background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:4}}>VIBEFIT</div>
             <div style={{fontSize:12,color:"#888"}}>Weekly Wellness Digest · {new Date().toLocaleDateString('en',{month:'long',day:'numeric',year:'numeric'})}</div>
           </div>
           <div style={{padding:"20px"}}>
             <div style={{fontSize:15,fontWeight:800,color:"#e8e8f0",marginBottom:14}}>Good morning, Team! 👋</div>
-            {/* Stats row */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:18}}>
               {[[weekLoggers.size+"","Active","👥","#6EE7B7"],[weekLogs.length+"","Logs","📊","#93C5FD"],[Math.round(weekLoggers.size/Math.max(1,totalMembers)*100)+"%","Participated","🎯","#F9A8D4"]].map(([v,l,ic,c])=>(
-                <div key={l} style={{background:"#ffffff08",borderRadius:12,padding:"12px 8px",textAlign:"center"}}>
-                  <div style={{fontSize:18,marginBottom:4}}>{ic}</div>
-                  <div style={{fontWeight:800,fontSize:18,color:c}}>{v}</div>
-                  <div style={{fontSize:9,color:"#666"}}>{l}</div>
-                </div>
+                <div key={l} style={{background:"#ffffff08",borderRadius:12,padding:"12px 8px",textAlign:"center"}}><div style={{fontSize:18,marginBottom:4}}>{ic}</div><div style={{fontWeight:800,fontSize:18,color:c}}>{v}</div><div style={{fontSize:9,color:"#666"}}>{l}</div></div>
               ))}
             </div>
-            {/* Top performer */}
             {topUser&&<div style={{background:"#FCD34D15",border:"1px solid #FCD34D33",borderRadius:14,padding:"14px",marginBottom:14}}>
               <div style={{fontSize:11,color:"#FCD34D",fontWeight:700,marginBottom:6}}>🥇 THIS WEEK'S TOP PERFORMER</div>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{width:40,height:40,borderRadius:"50%",background:`${topUser.color||"#6EE7B7"}33`,border:`2px solid ${topUser.color||"#6EE7B7"}55`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:topUser.color||"#6EE7B7",fontSize:15}}>{(topUser.name||"?").split(" ").map(n=>n[0]).join("").slice(0,2)}</div>
-                <div>
-                  <div style={{fontWeight:700,fontSize:14}}>{topUser.name}</div>
-                  <div style={{fontSize:12,color:"#888"}}>{topPts.toLocaleString()} points this week</div>
-                </div>
-              </div>
+              <div style={{display:"flex",alignItems:"center",gap:10}}><Av u={topUser} s={40}/><div><div style={{fontWeight:700,fontSize:14}}>{topUser.name}</div><div style={{fontSize:12,color:"#888"}}>{topPts.toLocaleString()} points</div></div></div>
             </div>}
             {!topUser&&<div style={{background:"#ffffff08",borderRadius:12,padding:"12px",marginBottom:14,textAlign:"center",color:"#888",fontSize:12}}>No activity logged this week yet.</div>}
-            {/* Physio tip */}
             <div style={{background:"#6EE7B710",border:"1px solid #6EE7B722",borderRadius:14,padding:"14px",marginBottom:14}}>
               <div style={{fontSize:11,color:"#6EE7B7",fontWeight:700,marginBottom:6}}>👩‍⚕️ PHYSIO TIP OF THE WEEK</div>
               <div style={{fontSize:13,color:"#d4d4d4",lineHeight:1.6}}>{tipOfWeek}</div>
               <div style={{fontSize:10,color:"#888",marginTop:6}}>— Physiotherapist, Brooke Cassar</div>
             </div>
-            {/* CTA */}
             <div style={{background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",borderRadius:12,padding:"12px 14px",textAlign:"center",border:"1px solid #6EE7B744"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#e8e8f0",marginBottom:3}}>Keep the momentum going! 💪</div>
               <div style={{fontSize:11,color:"#888"}}>Log your activity in VibeFit to stay on the leaderboard.</div>
             </div>
           </div>
-          {/* Footer */}
-          <div style={{borderTop:"1px solid #ffffff08",padding:"12px 20px",textAlign:"center"}}>
-            <div style={{fontSize:10,color:"#555",lineHeight:1.6}}>VibeFit · Built for workplace wellness by Physiotherapist, Brooke Cassar</div>
-          </div>
+          <div style={{borderTop:"1px solid #ffffff08",padding:"12px 20px",textAlign:"center"}}><div style={{fontSize:10,color:"#555"}}>VibeFit · Built for workplace wellness by Physiotherapist, Brooke Cassar</div></div>
         </div>
-
-        <div style={{marginTop:14,background:"#C4B5FD0d",border:"1px solid #C4B5FD22",borderRadius:12,padding:"12px 14px"}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#C4B5FD",marginBottom:4}}>📬 Auto-send setup</div>
-          <div style={{fontSize:12,color:"#888",lineHeight:1.6}}>To send this digest automatically every Monday, connect an email service like Resend or SendGrid and deploy the <code style={{background:"#ffffff10",borderRadius:4,padding:"1px 4px",fontSize:11}}>weekly-digest</code> Supabase edge function.</div>
+      </div>}
+      {toolSec==="teams"&&<div>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>Create New Team</div>
+        <div className="card" style={{marginBottom:14}}>
+          <Inp label="Team Name" value={newTeam.name} onChange={e=>setNewTeam(t=>({...t,name:e.target.value}))} placeholder="e.g. Physio Team"/>
+          <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:5}}>Color</div><div style={{display:"flex",gap:5}}>{TC.map(c=><button key={c} onClick={()=>setNewTeam(t=>({...t,color:c}))} style={{width:24,height:24,borderRadius:"50%",background:c,border:`3px solid ${newTeam.color===c?"#fff":"transparent"}`}}/>)}</div></div>
+          <Btn color="#93C5FD" text="Create Team" style={{width:"100%"}} onClick={createTeam}/>
         </div>
-      </div>;
-    })()}
-
-    {sec==="tips"&&<div>
-      <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>Post a Physio Tip</div>
-      <div style={{fontSize:12,color:"#888",marginBottom:14}}>Share your expertise — tips appear in everyone's feed instantly.</div>
-      <div className="card">
-        <Inp label="Title" placeholder="e.g. Why your hips are tight from sitting" value={tipF.title} onChange={e=>setTipF(f=>({...f,title:e.target.value}))}/>
-        <div style={{marginBottom:10}}>
-          <div style={{fontSize:11,color:"#888",marginBottom:4}}>Body Area</div>
-          <select value={tipF.body_part} onChange={e=>setTipF(f=>({...f,body_part:e.target.value}))} style={{width:"100%"}}>
-            {Object.entries(BP_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-          </select>
-        </div>
-        <div style={{marginBottom:10}}>
-          <div style={{fontSize:11,color:"#888",marginBottom:4}}>Tip Content</div>
-          <textarea value={tipF.content} onChange={e=>setTipF(f=>({...f,content:e.target.value}))} placeholder="Share your physio knowledge — keep it practical and evidence-based…" rows={5} style={{resize:"none",width:"100%"}}/>
-        </div>
-        <Inp label="Emoji" value={tipF.emoji} onChange={e=>setTipF(f=>({...f,emoji:e.target.value}))} style={{width:60}}/>
-        {tipF.title&&tipF.content&&<div style={{background:`${BP_COLORS[tipF.body_part]||"#6EE7B7"}0d`,border:`1px solid ${BP_COLORS[tipF.body_part]||"#6EE7B7"}22`,borderRadius:10,padding:"10px 12px",marginBottom:12}}>
-          <div style={{fontSize:10,color:"#888",marginBottom:4}}>Preview</div>
-          <div style={{fontWeight:700,fontSize:13,marginBottom:3}}>{tipF.title}</div>
-          <div style={{fontSize:11,color:"#aaa"}}>{tipF.content.slice(0,80)}{tipF.content.length>80?"…":""}</div>
-        </div>}
-        <Btn color="#6EE7B7" text={savingTip?"Posting…":"💡 Post to Feed"} style={{width:"100%",padding:"11px"}} onClick={createTip} disabled={savingTip||!tipF.title||!tipF.content}/>
-      </div>
-    </div>}
-
-    {sec==="teams"&&<div>
-      <div style={{fontWeight:700,fontSize:16,marginBottom:12}}>Teams</div>
-      <div className="card" style={{marginBottom:14}}>
-        <div style={{fontWeight:700,marginBottom:10}}>Create New Team</div>
-        <Inp label="Team Name" value={newTeam.name} onChange={e=>setNewTeam(t=>({...t,name:e.target.value}))} placeholder="e.g. Physio Team"/>
-        <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:5}}>Color</div><div style={{display:"flex",gap:5}}>{TC.map(c=><button key={c} onClick={()=>setNewTeam(t=>({...t,color:c}))} style={{width:24,height:24,borderRadius:"50%",background:c,border:`3px solid ${newTeam.color===c?"#fff":"transparent"}`}}/>)}</div></div>
-        <Btn color="#93C5FD" text="Create Team" style={{width:"100%"}} onClick={createTeam}/>
-      </div>
-      {teams.map(t=><div key={t.id} className="card" style={{marginBottom:10,borderColor:`${t.color}22`}}>
-        <div style={{display:"flex",gap:10,alignItems:"center"}}>
+        {teams.map(t=><div key={t.id} className="card" style={{display:"flex",gap:10,alignItems:"center",marginBottom:8,borderColor:`${t.color}22`}}>
           <div style={{width:40,height:40,borderRadius:12,background:`${t.color}22`,border:`1px solid ${t.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>{t.emoji}</div>
-          <div style={{flex:1}}><div style={{fontWeight:700}}>{t.name}</div></div>
-          <Btn color="#6EE7B7" text={generating?"…":"🔗 Invite Link"} style={{fontSize:12,padding:"6px 12px"}} onClick={()=>generateInviteLink(t.id)}/>
+          <div style={{flex:1}}><div style={{fontWeight:700}}>{t.name}</div><div style={{fontSize:11,color:"#888"}}>{users.filter(u=>u.team_id===t.id).length} members</div></div>
+        </div>)}
+        {teams.length===0&&<div style={{textAlign:"center",color:"#888",padding:"20px 0",fontSize:13}}>No teams yet.</div>}
+      </div>}
+      {toolSec==="superadmin"&&cu.is_super_admin&&<div>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><span style={{fontWeight:700,fontSize:15}}>🌐 Super Admin</span><Pill color="#FCD34D" text="BROOKE ONLY"/></div>
+        <div style={{fontSize:12,color:"#888",marginBottom:14}}>Manage all companies on VibeFit.</div>
+        <div className="card" style={{marginBottom:14}}>
+          <div style={{fontWeight:700,marginBottom:10}}>Create New Company</div>
+          <div style={{display:"flex",gap:7,marginBottom:8}}><input placeholder="Company name" value={newCo.name} onChange={e=>setNewCo(c=>({...c,name:e.target.value}))} style={{flex:1}}/><input placeholder="🏢" value={newCo.emoji} onChange={e=>setNewCo(c=>({...c,emoji:e.target.value}))} style={{width:50}}/></div>
+          <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:5}}>Brand Color</div><div style={{display:"flex",gap:5}}>{TC.map(c=><button key={c} onClick={()=>setNewCo(co=>({...co,color:c}))} style={{width:24,height:24,borderRadius:"50%",background:c,border:`3px solid ${newCo.color===c?"#fff":"transparent"}`}}/>)}</div></div>
+          <Btn color="#FCD34D" text={creatingCo?"Creating…":"➕ Create Company"} style={{width:"100%"}} onClick={createCompany} disabled={creatingCo||!newCo.name.trim()}/>
         </div>
-        {inviteLink&&<div style={{marginTop:10,background:"#6EE7B710",border:"1px solid #6EE7B733",borderRadius:10,padding:"10px 12px"}}>
-          <div style={{fontSize:11,color:"#6EE7B7",marginBottom:6,fontWeight:700}}>📋 Share this link:</div>
-          <div style={{fontSize:11,color:"#aaa",wordBreak:"break-all",marginBottom:8}}>{inviteLink}</div>
-          <button onClick={()=>{navigator.clipboard.writeText(inviteLink);notify("📋 Copied!");}} style={{background:"#6EE7B722",border:"1px solid #6EE7B744",color:"#6EE7B7",borderRadius:8,padding:"5px 12px",fontSize:12,fontWeight:700}}>Copy Link</button>
-        </div>}
-      </div>)}
-      {teams.length===0&&<div style={{textAlign:"center",color:"#888",padding:"20px 0",fontSize:13}}>No teams yet. Create your first one above!</div>}
-    </div>}
+        <div style={{fontWeight:700,fontSize:13,marginBottom:8}}>{companies.length} Companies</div>
+        {companies.map(co=><div key={co.id} className="card" style={{marginBottom:10,borderColor:`${co.color}22`}}>
+          <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:10}}>
+            <div style={{width:44,height:44,borderRadius:13,background:`${co.color}22`,border:`1px solid ${co.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>{co.emoji}</div>
+            <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14}}>{co.name}</div><div style={{fontSize:11,color:"#888"}}>{co.plan||"starter"} plan</div></div>
+            {co.id===cu.company_id&&<Pill color="#6EE7B7" text="YOUR CO"/>}
+          </div>
+          <Btn color="#C4B5FD" text="👑 Generate Admin Invite" style={{width:"100%",fontSize:12}} onClick={()=>generateAdminInvite(co.id)}/>
+          {adminInviteLink[co.id]&&<div style={{marginTop:8,background:"#C4B5FD10",border:"1px solid #C4B5FD25",borderRadius:9,padding:"9px 12px"}}>
+            <div style={{fontSize:11,color:"#C4B5FD",fontWeight:700,marginBottom:5}}>📋 Admin invite link:</div>
+            <div style={{fontSize:10,color:"#aaa",wordBreak:"break-all",marginBottom:7}}>{adminInviteLink[co.id]}</div>
+            <button onClick={()=>{navigator.clipboard.writeText(adminInviteLink[co.id]);notify("📋 Copied!");}} style={{background:"#C4B5FD22",border:"1px solid #C4B5FD44",color:"#C4B5FD",borderRadius:7,padding:"4px 10px",fontSize:11,fontWeight:700}}>Copy Link</button>
+          </div>}
+        </div>)}
+        {companies.length===0&&<div style={{textAlign:"center",color:"#888",padding:"20px 0",fontSize:13}}>No companies yet.</div>}
+      </div>}
+    </div>;
+  }
 
-    {sec==="challenges"&&<div>
-      <div className="card" style={{marginBottom:12}}>
-        <div style={{fontWeight:700,marginBottom:10}}>Create Challenge</div>
+  // ── HOME: team picker ──
+  const today7=new Date(Date.now()-7*864e5);
+  const recentLogs=(feed||[]).filter(p=>new Date(p.ts)>=today7);
+  const recentLoggers=new Set(recentLogs.map(p=>p.uid));
+  const totalMembers=users.length+1;
+  const partRate=totalMembers>0?recentLoggers.size/totalMembers:0;
+  const avgStreak=users.length>0?users.reduce((a,u)=>a+(u.checkin_streak||0),0)/users.length:0;
+  const ws=Math.min(100,Math.round(partRate*100*0.5+Math.min(1,avgStreak/14)*100*0.3+Math.min(1,(recentLogs.length/(totalMembers*3)))*100*0.2));
+  const wsCol=ws>=75?"#6EE7B7":ws>=50?"#FCD34D":ws>=25?"#FB923C":"#F87171";
+  const wsLabel=ws>=75?"Thriving 💚":ws>=50?"Good 💛":ws>=25?"Developing 🟠":"Just Starting 🔴";
 
-        <div style={{marginBottom:10}}>
-          <div style={{fontSize:11,color:"#888",marginBottom:6}}>Challenge Type</div>
-          <div style={{display:"flex",gap:6}}>
-            {[["count","📊 Count","Log a number (steps, ml, reps)"],["habit","✅ Habit","Daily checklist (stretch, drink water)"]].map(([v,lbl,sub])=>
-              <button key={v} onClick={()=>setChF(f=>({...f,type:v}))} style={{flex:1,padding:"9px 8px",borderRadius:10,border:`1px solid ${chF.type===v?"#F9A8D455":"#ffffff15"}`,background:chF.type===v?"#F9A8D418":"transparent",textAlign:"left"}}>
-                <div style={{fontWeight:700,fontSize:12,color:chF.type===v?"#F9A8D4":"#888"}}>{lbl}</div>
-                <div style={{fontSize:10,color:"#555",marginTop:2}}>{sub}</div>
-              </button>
+  return<div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+      <div style={{display:"flex",alignItems:"center",gap:7}}><span style={{fontWeight:700,fontSize:17}}>Admin</span><Pill color="#C4B5FD" text="ADMIN"/>{cu.is_super_admin&&<Pill color="#FCD34D" text="SUPER"/>}</div>
+      <Btn color="#C4B5FD" text="⚙️ Tools" style={{fontSize:12,padding:"6px 12px"}} onClick={()=>setView("tools")}/>
+    </div>
+
+    {/* Company wellness score */}
+    <div style={{background:"linear-gradient(135deg,#6EE7B710,#93C5FD08)",border:"1px solid #6EE7B722",borderRadius:18,padding:"16px",marginBottom:16}}>
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        <div style={{position:"relative",width:64,height:64,flexShrink:0}}>
+          <svg width={64} height={64} style={{transform:"rotate(-90deg)"}}>
+            <circle cx={32} cy={32} r={26} fill="none" stroke="#ffffff0f" strokeWidth={5}/>
+            <circle cx={32} cy={32} r={26} fill="none" stroke={wsCol} strokeWidth={5} strokeDasharray={`${ws/100*163} 163`} strokeLinecap="round" style={{transition:"stroke-dasharray .8s"}}/>
+          </svg>
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:15,color:wsCol}}>{ws}</div>
+        </div>
+        <div>
+          <div style={{fontSize:10,color:"#888",marginBottom:2}}>Company Wellness Score</div>
+          <div style={{fontWeight:800,fontSize:17,color:wsCol}}>{wsLabel}</div>
+          <div style={{display:"flex",gap:10,marginTop:5}}>
+            {[[Math.round(partRate*100)+"%","Active","#6EE7B7"],[avgStreak.toFixed(1)+"d","Streak","#FCD34D"],[recentLogs.length,"Logs","#93C5FD"]].map(([v,l,c])=>
+              <div key={l} style={{textAlign:"center"}}><div style={{fontWeight:700,fontSize:13,color:c}}>{v}</div><div style={{fontSize:9,color:"#555"}}>{l}</div></div>
             )}
           </div>
         </div>
-
-        <div style={{display:"flex",gap:7}}>
-          <Inp label="Title" value={chF.title} onChange={e=>setChF(f=>({...f,title:e.target.value}))} style={{flex:3}}/>
-          <Inp label="Icon" value={chF.icon} onChange={e=>setChF(f=>({...f,icon:e.target.value}))} style={{flex:1}}/>
-        </div>
-        {chF.type==="count"&&<div style={{display:"flex",gap:7}}>
-          <Inp label="Unit" value={chF.unit} onChange={e=>setChF(f=>({...f,unit:e.target.value}))} style={{flex:1}}/>
-          <Inp label="Goal" value={chF.goal} onChange={e=>setChF(f=>({...f,goal:e.target.value}))} type="number" style={{flex:1}}/>
-        </div>}
-        <div style={{marginBottom:10}}>
-          <div style={{fontSize:11,color:"#888",marginBottom:5}}>Color</div>
-          <div style={{display:"flex",gap:5}}>{TC.map(c=><button key={c} onClick={()=>setChF(f=>({...f,color:c}))} style={{width:24,height:24,borderRadius:"50%",background:c,border:`3px solid ${chF.color===c?"#fff":"transparent"}`}}/>)}</div>
-        </div>
-        <div style={{marginBottom:10}}>
-          <div style={{fontSize:11,color:"#888",marginBottom:4}}>Physio Note <span style={{color:"#555"}}>(optional — shows on challenge card)</span></div>
-          <textarea value={chF.physioNote} onChange={e=>setChF(f=>({...f,physioNote:e.target.value}))} placeholder="Why does this challenge matter? Share the science…" rows={3} style={{resize:"none",width:"100%"}}/>
-        </div>
-        <Btn color="#F9A8D4" text="Launch 🚀" style={{width:"100%"}} onClick={createCh}/>
       </div>
-      {challenges.map(ch=><div key={ch.id} className="card" style={{marginBottom:8,display:"flex",gap:9,alignItems:"center",opacity:ch.active?1:.6}}>
-        <span style={{fontSize:20}}>{ch.icon}</span>
-        <div style={{flex:1}}>
-          <div style={{fontWeight:700,color:ch.color,fontSize:13}}>{ch.title}</div>
-          <div style={{fontSize:11,color:"#888"}}>{ch.type==="habit"?"Habit ✅":ch.goal?.toLocaleString()+" "+ch.unit}</div>
-        </div>
-        <button onClick={async()=>{await supabase.from('challenges').update({active:!ch.active}).eq('id',ch.id);setChallenges(c=>c.map(x=>x.id===ch.id?{...x,active:!x.active}:x));}} style={{background:`${ch.active?"#FCD34D":"#6EE7B7"}15`,border:`1px solid ${ch.active?"#FCD34D":"#6EE7B7"}33`,color:ch.active?"#FCD34D":"#6EE7B7",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700}}>{ch.active?"Pause":"Resume"}</button>
-      </div>)}
+    </div>
+
+    {/* Team cards */}
+    <div style={{fontWeight:700,fontSize:14,marginBottom:10}}>Teams <span style={{color:"#555",fontWeight:400,fontSize:12}}>— tap to open dashboard</span></div>
+    {teams.length===0&&<div className="card" style={{textAlign:"center",padding:"30px 16px",color:"#888"}}>
+      <div style={{fontSize:36,marginBottom:8}}>👥</div>
+      <div style={{fontSize:13,marginBottom:10}}>No teams yet.</div>
+      <Btn color="#93C5FD" text="⚙️ Create a Team" onClick={()=>{setView("tools");setToolSec("teams");}}/>
     </div>}
-
-    {sec==="superadmin"&&cu.is_super_admin&&<div>
-      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-        <span style={{fontWeight:700,fontSize:16}}>🌐 Super Admin</span>
-        <Pill color="#FCD34D" text="BROOKE ONLY"/>
-      </div>
-      <div style={{fontSize:12,color:"#888",marginBottom:14}}>Manage all companies on VibeFit. Each company is fully isolated.</div>
-
-      <div className="card" style={{marginBottom:14}}>
-        <div style={{fontWeight:700,marginBottom:10}}>Create New Company</div>
-        <div style={{display:"flex",gap:7,marginBottom:8}}>
-          <input placeholder="Company name" value={newCo.name} onChange={e=>setNewCo(c=>({...c,name:e.target.value}))} style={{flex:1}}/>
-          <input placeholder="🏢" value={newCo.emoji} onChange={e=>setNewCo(c=>({...c,emoji:e.target.value}))} style={{width:50}}/>
-        </div>
-        <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:5}}>Brand Color</div><div style={{display:"flex",gap:5}}>{TC.map(c=><button key={c} onClick={()=>setNewCo(co=>({...co,color:c}))} style={{width:24,height:24,borderRadius:"50%",background:c,border:`3px solid ${newCo.color===c?"#fff":"transparent"}`}}/>)}</div></div>
-        <Btn color="#FCD34D" text={creatingCo?"Creating…":"➕ Create Company"} style={{width:"100%"}} onClick={createCompany} disabled={creatingCo||!newCo.name.trim()}/>
-      </div>
-
-      <div style={{fontWeight:700,fontSize:13,marginBottom:8}}>{companies.length} Companies</div>
-      {companies.map(co=><div key={co.id} className="card" style={{marginBottom:10,borderColor:`${co.color}22`}}>
-        <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:10}}>
-          <div style={{width:44,height:44,borderRadius:13,background:`${co.color}22`,border:`1px solid ${co.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>{co.emoji}</div>
-          <div style={{flex:1}}>
-            <div style={{fontWeight:700,fontSize:14}}>{co.name}</div>
-            <div style={{fontSize:11,color:"#888"}}>{co.plan||"starter"} plan · {co.subscription_status||"active"}</div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+      {teams.map(t=>{
+        const members=users.filter(u=>u.team_id===t.id);
+        const memberIds=new Set(members.map(u=>u.id));
+        const tFeed=(feed||[]).filter(p=>memberIds.has(p.uid)&&new Date(p.ts)>=today7);
+        const tActive=new Set(tFeed.map(p=>p.uid)).size;
+        const tPart=members.length>0?Math.round(tActive/members.length*100):0;
+        const tStreak=members.length>0?Math.round(members.reduce((a,u)=>a+(u.checkin_streak||0),0)/members.length*10)/10:0;
+        const tWs=Math.min(100,Math.round(tPart*0.5+Math.min(100,tStreak/14*100)*0.3+Math.min(100,tFeed.length/Math.max(1,members.length*3)*100)*0.2));
+        const tWsCol=tWs>=75?"#6EE7B7":tWs>=50?"#FCD34D":tWs>=25?"#FB923C":"#F87171";
+        return<div key={t.id} onClick={()=>{setSelectedTeam(t);setView("team");}} className="card" style={{cursor:"pointer",borderColor:`${t.color}33`,padding:14,position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:10,right:12,fontWeight:900,fontSize:13,color:tWsCol}}>{tWs}</div>
+          <div style={{width:40,height:40,borderRadius:12,background:`${t.color}22`,border:`1px solid ${t.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,marginBottom:8}}>{t.emoji||"👥"}</div>
+          <div style={{fontWeight:800,fontSize:13,marginBottom:2,paddingRight:28}}>{t.name}</div>
+          <div style={{fontSize:11,color:"#888",marginBottom:6}}>{members.length} member{members.length!==1?"s":""}</div>
+          <div style={{display:"flex",gap:8}}>
+            <div style={{textAlign:"center"}}><div style={{fontSize:11,fontWeight:700,color:t.color}}>{tPart}%</div><div style={{fontSize:9,color:"#555"}}>Active</div></div>
+            <div style={{textAlign:"center"}}><div style={{fontSize:11,fontWeight:700,color:"#FB923C"}}>🔥{tStreak}</div><div style={{fontSize:9,color:"#555"}}>Streak</div></div>
           </div>
-          {co.id===cu.company_id&&<Pill color="#6EE7B7" text="YOUR CO"/>}
-        </div>
-        <Btn color="#C4B5FD" text="👑 Generate Admin Invite" style={{width:"100%",fontSize:12}} onClick={()=>generateAdminInvite(co.id)}/>
-        {adminInviteLink[co.id]&&<div style={{marginTop:8,background:"#C4B5FD10",border:"1px solid #C4B5FD25",borderRadius:9,padding:"9px 12px"}}>
-          <div style={{fontSize:11,color:"#C4B5FD",fontWeight:700,marginBottom:5}}>📋 Admin invite link:</div>
-          <div style={{fontSize:10,color:"#aaa",wordBreak:"break-all",marginBottom:7}}>{adminInviteLink[co.id]}</div>
-          <button onClick={()=>{navigator.clipboard.writeText(adminInviteLink[co.id]);notify("📋 Copied!");}} style={{background:"#C4B5FD22",border:"1px solid #C4B5FD44",color:"#C4B5FD",borderRadius:7,padding:"4px 10px",fontSize:11,fontWeight:700}}>Copy Link</button>
-        </div>}
-      </div>)}
-      {companies.length===0&&<div style={{textAlign:"center",color:"#888",padding:"20px 0",fontSize:13}}>No companies yet. Create the first one above!</div>}
-    </div>}
+          <div style={{marginTop:8,height:3,background:"#ffffff08",borderRadius:3}}><div style={{width:`${tWs}%`,height:"100%",background:tWsCol,borderRadius:3,transition:"width .5s"}}/></div>
+        </div>;
+      })}
+    </div>
+    {teams.length>0&&<Btn color="#93C5FD" text="+ New Team" style={{width:"100%",marginBottom:4}} onClick={()=>{setView("tools");setToolSec("teams");}}/>}
   </div>;
 };
 

@@ -718,6 +718,8 @@ const ChalTab=({challenges,feed,cu,onLog})=>{
 const MsgTab=({cu,users})=>{
   const [dm,setDm]=useState(null);
   const [txt,setTxt]=useState("");
+  const [sending,setSending]=useState(false);
+  const [sendErr,setSendErr]=useState("");
   const [convos,setConvos]=useState({});
   const [lastMsgs,setLastMsgs]=useState({});
   const ref=useRef(null);
@@ -754,11 +756,15 @@ const MsgTab=({cu,users})=>{
   useEffect(()=>{ if(ref.current) ref.current.scrollTop=ref.current.scrollHeight; },[dm,convos]);
 
   const send=async()=>{
-    if(!txt.trim()||!dm) return;
+    if(!txt.trim()||!dm||sending) return;
     const text=txt.trim();
-    setTxt("");
+    setSending(true);
+    setSendErr("");
     const{data,error}=await supabase.from('messages').insert({from_id:cu.id,to_id:dm.id,text}).select().single();
-    if(!error&&data){
+    setSending(false);
+    if(error){setSendErr(error.message);return;}
+    if(data){
+      setTxt("");
       setConvos(prev=>({...prev,[dm.id]:[...(prev[dm.id]||[]),data]}));
       setLastMsgs(prev=>({...prev,[dm.id]:data}));
     }
@@ -781,9 +787,10 @@ const MsgTab=({cu,users})=>{
           </div>;
         })}
       </div>
+      {sendErr&&<div style={{fontSize:11,color:"#F87171",marginBottom:6,padding:"6px 10px",background:"#F8717120",borderRadius:8}}>{sendErr}</div>}
       <div style={{display:"flex",gap:7}}>
-        <input placeholder="Message…" value={txt} onChange={e=>setTxt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} style={{flex:1,fontSize:13}}/>
-        <button onClick={send} style={{background:`${cu.color||"#6EE7B7"}22`,border:`1px solid ${cu.color||"#6EE7B7"}55`,color:cu.color||"#6EE7B7",padding:"0 14px",borderRadius:9,fontWeight:700}}>→</button>
+        <input placeholder="Message…" value={txt} onChange={e=>setTxt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} style={{flex:1,fontSize:13}} disabled={sending}/>
+        <button onClick={send} disabled={sending} style={{background:`${cu.color||"#6EE7B7"}22`,border:`1px solid ${cu.color||"#6EE7B7"}55`,color:cu.color||"#6EE7B7",padding:"0 14px",borderRadius:9,fontWeight:700,opacity:sending?0.5:1}}>{sending?"…":"→"}</button>
       </div>
     </div>
   );

@@ -20,6 +20,10 @@ const ago=ts=>{const d=Date.now()-ts;if(d<60000)return"just now";if(d<3600000)re
 const ini=n=>n?n.split(" ").map(p=>p[0]).join("").toUpperCase().slice(0,2):"?";
 let _c=0;const uid=()=>++_c;
 const todayStr=()=>new Date().toDateString();
+// sleep 35%, energy 30%, mood 20%, hydration 15%
+const calcReadiness=s=>Math.round(((s.sleep-1)/4*35+(s.energy-1)/4*30+(s.mood-1)/4*20+(s.water-1)/4*15));
+const readinessColor=r=>r>=80?"#93C5FD":r>=60?"#6EE7B7":r>=40?"#FCD34D":"#F87171";
+const readinessLabel=r=>r>=80?"Peak Readiness":r>=60?"Ready to Go":r>=40?"Take It Easy":"Rest & Recover";
 
 // ── THEME ──
 const DK={bg:"#080810",card:"#ffffff0a",cb:"#ffffff12",tx:"#e8e8f0",sub:"#666",inp:"#ffffff08",inpb:"#ffffff15",nb:"#ffffff07",na:"#ffffff18"};
@@ -58,10 +62,129 @@ const TipCard=({tip})=>{
 const CheckIn=({onDone})=>{
   const [step,setStep]=useState(0);const [scores,setScores]=useState({});
   const STEPS=[{k:"mood",q:"How's your mood?",opts:["😴","😕","😐","🙂","😄"],color:"#F9A8D4"},{k:"energy",q:"Energy level?",opts:["🪫","😮‍💨","😌","⚡","🚀"],color:"#FCD34D"},{k:"water",q:"Water intake so far?",opts:["🏜️","💧","🥛","💦","🌊"],color:"#93C5FD"},{k:"sleep",q:"Sleep last night?",opts:["😵","😪","😴","🛌","⭐"],color:"#6EE7B7"}];
-  if(step>=STEPS.length){const total=Object.values(scores).reduce((a,b)=>a+b,0);const col=total<=8?"#F9A8D4":total<=12?"#FCD34D":"#6EE7B7";return<div style={{background:"linear-gradient(135deg,#6EE7B715,#93C5FD0a)",border:"1px solid #6EE7B733",borderRadius:18,padding:18,marginBottom:14,textAlign:"center"}}><div style={{fontSize:30,marginBottom:6}}>✅</div><div style={{fontWeight:800,fontSize:16,marginBottom:2}}>Check-in done!</div><div style={{fontWeight:800,fontSize:34,color:col,marginBottom:4}}>{total}/20</div><div style={{fontSize:13,color:col,marginBottom:14}}>{total<=8?"Take it easy 🌿":total<=12?"Solid start! 💪":"You're on fire! 🔥"}</div><button onClick={onDone} style={{background:"#6EE7B722",border:"1px solid #6EE7B744",color:"#6EE7B7",borderRadius:10,padding:"7px 20px",fontWeight:700}}>Done</button></div>;}
+  if(step>=STEPS.length){const total=Object.values(scores).reduce((a,b)=>a+b,0);const col=total<=8?"#F9A8D4":total<=12?"#FCD34D":"#6EE7B7";return<div style={{background:"linear-gradient(135deg,#6EE7B715,#93C5FD0a)",border:"1px solid #6EE7B733",borderRadius:18,padding:18,marginBottom:14,textAlign:"center"}}><div style={{fontSize:30,marginBottom:6}}>✅</div><div style={{fontWeight:800,fontSize:16,marginBottom:2}}>Check-in done!</div><div style={{fontWeight:800,fontSize:34,color:col,marginBottom:4}}>{total}/20</div><div style={{fontSize:13,color:col,marginBottom:14}}>{total<=8?"Take it easy 🌿":total<=12?"Solid start! 💪":"You're on fire! 🔥"}</div><button onClick={()=>onDone(scores)} style={{background:"#6EE7B722",border:"1px solid #6EE7B744",color:"#6EE7B7",borderRadius:10,padding:"7px 20px",fontWeight:700}}>Done</button></div>;}
   const cur=STEPS[step];
   return<div style={{background:"linear-gradient(135deg,#6EE7B715,#93C5FD0a)",border:"1px solid #6EE7B733",borderRadius:18,padding:18,marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{fontWeight:800,fontSize:14}}>🌅 Daily Check-In</div><div style={{display:"flex",gap:4}}>{STEPS.map((_,i)=><div key={i} style={{width:18,height:3,borderRadius:2,background:i<step?cur.color:"#ffffff15"}}/>)}</div></div><div style={{fontWeight:700,fontSize:15,marginBottom:12}}>{cur.q}</div><div style={{display:"flex",gap:6}}>{cur.opts.map((emoji,i)=>{const v=i+1,sel=scores[cur.k]===v;return<button key={i} onClick={()=>{setScores(s=>({...s,[cur.k]:v}));setTimeout(()=>setStep(s=>s+1),220);}} style={{flex:1,padding:"10px 4px",borderRadius:12,border:`2px solid ${sel?cur.color:"#ffffff15"}`,background:sel?`${cur.color}22`:"transparent",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}><span style={{fontSize:22}}>{emoji}</span></button>;})}
   </div></div>;
+};
+
+// ── READINESS CARD (shown in feed after check-in) ──
+const ReadinessCard=({checkin})=>{
+  const r=checkin.readiness;
+  const col=readinessColor(r);
+  const label=readinessLabel(r);
+  const FACTORS=[
+    {k:"sleep",label:"Sleep",icon:"😴",col:"#6EE7B7"},
+    {k:"energy",label:"Energy",icon:"⚡",col:"#FCD34D"},
+    {k:"mood",label:"Mood",icon:"😊",col:"#F9A8D4"},
+    {k:"water",label:"Hydration",icon:"💧",col:"#93C5FD"},
+  ];
+  // Find weakest factor for the targeted insight
+  const weakest=FACTORS.reduce((a,b)=>checkin[a.k]<=checkin[b.k]?a:b);
+  const INSIGHTS={
+    sleep:[
+      "Sleep deprivation raises pain sensitivity and tightens your muscles. Take regular movement breaks and don't push hard today.",
+      "Excellent sleep means better tissue repair and spinal disc rehydration overnight. Your body is ready to move! 💪"
+    ],
+    energy:[
+      "Low energy increases injury risk — your muscles tire faster and form breaks down. Stick to gentle movement today.",
+      "High energy signals your nervous system is dialled in. A great day for a challenging workout or long walk."
+    ],
+    mood:[
+      "Stress physically contracts your neck, jaw and shoulder muscles. Try 3 slow deep breaths right now — it genuinely releases tension.",
+      "Positive mood means better motor patterns and more motivated movement. Let your body express it!"
+    ],
+    water:[
+      "Spinal discs are 80% water — dehydration compresses them faster and stiffens your joints. Drink a big glass before your next task.",
+      "Well hydrated joints move freely and muscles fire efficiently. Keep topping up throughout the day! 💧"
+    ],
+  };
+  const insight=r<45
+    ?"Your readiness is low today. Prioritise the basics: water, gentle movement and rest. Your body is asking for recovery."
+    :INSIGHTS[weakest.k][checkin[weakest.k]>=3?1:0];
+
+  return<div className="card fu" style={{marginBottom:12,background:"linear-gradient(135deg,#6EE7B710,#93C5FD08)",borderColor:"#6EE7B730"}}>
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+      <div style={{position:"relative",width:64,height:64,flexShrink:0}}>
+        <Ring pct={r/100} color={col} size={64}/>
+        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:col}}>{r}</div>
+      </div>
+      <div style={{flex:1}}>
+        <div style={{display:"flex",gap:5,alignItems:"center",marginBottom:2}}>
+          <span style={{fontWeight:800,fontSize:16,color:col}}>{label}</span>
+          <Pill color="#6EE7B7" text="TODAY"/>
+        </div>
+        <div style={{fontSize:11,color:"#888"}}>Daily readiness · by Dr. Brooke 👩‍⚕️</div>
+      </div>
+    </div>
+    <div style={{display:"flex",gap:5,marginBottom:10}}>
+      {FACTORS.map(f=>{
+        const v=checkin[f.k];
+        return<div key={f.k} style={{flex:1,background:"#ffffff07",borderRadius:10,padding:"8px 4px",textAlign:"center"}}>
+          <div style={{fontSize:17,marginBottom:4}}>{f.icon}</div>
+          <div style={{height:3,borderRadius:2,background:"#ffffff10",margin:"0 3px 3px"}}>
+            <div style={{width:`${((v-1)/4)*100}%`,height:"100%",background:f.col,borderRadius:2,transition:"width .6s"}}/>
+          </div>
+          <div style={{fontSize:8,color:"#666"}}>{f.label}</div>
+          <div style={{fontSize:10,color:f.col,fontWeight:700}}>{v}/5</div>
+        </div>;
+      })}
+    </div>
+    <div style={{background:"#ffffff08",borderRadius:11,padding:"10px 13px",display:"flex",gap:8,alignItems:"flex-start"}}>
+      <span style={{fontSize:18,flexShrink:0}}>👩‍⚕️</span>
+      <div style={{fontSize:12,color:"#bbb",lineHeight:1.6}}>{insight}</div>
+    </div>
+  </div>;
+};
+
+// ── READINESS HISTORY CARD (shown in Profile tab) ──
+const ReadinessHistoryCard=({cu})=>{
+  const [history,setHistory]=useState([]);
+  useEffect(()=>{
+    supabase.from('checkins').select('*').eq('user_id',cu.id)
+      .order('created_at',{ascending:false}).limit(7)
+      .then(({data})=>{ if(data&&data.length) setHistory([...data].reverse()); });
+  },[cu.id]);
+  if(!history.length) return null;
+  const avg=Math.round(history.reduce((a,c)=>a+c.readiness,0)/history.length);
+  const latest=history[history.length-1];
+  const col=readinessColor(avg);
+  const trend=history.length>=4
+    ? (history.slice(-3).reduce((a,c)=>a+c.readiness,0)/3 - history.slice(0,3).reduce((a,c)=>a+c.readiness,0)/3)
+    : 0;
+  const FACTORS=[
+    {k:"sleep",label:"Sleep",icon:"😴",col:"#6EE7B7"},
+    {k:"energy",label:"Energy",icon:"⚡",col:"#FCD34D"},
+    {k:"mood",label:"Mood",icon:"😊",col:"#F9A8D4"},
+    {k:"water",label:"Hydration",icon:"💧",col:"#93C5FD"},
+  ];
+  return<div className="card" style={{marginBottom:9}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+      <div style={{fontWeight:700,fontSize:13}}>⚡ Readiness Trend</div>
+      <div style={{display:"flex",gap:5,alignItems:"center"}}>
+        <span style={{fontSize:12,color:col,fontWeight:700}}>{avg} avg</span>
+        {Math.abs(trend)>2&&<Pill color={trend>0?"#6EE7B7":"#F87171"} text={`${trend>0?"↑":"↓"} ${Math.abs(Math.round(trend))}`}/>}
+      </div>
+    </div>
+    <Spk sid="rd" data={history.map(c=>({date:new Date(c.created_at).toLocaleDateString('en',{weekday:'short'}),val:c.readiness}))} color={col}/>
+    <div style={{display:"flex",justifyContent:"space-between",marginTop:4,marginBottom:10,fontSize:9,color:"#555"}}>
+      <span>{history.length} day{history.length>1?"s":""} ago</span><span>today</span>
+    </div>
+    <div style={{fontWeight:700,fontSize:11,color:"#888",marginBottom:6}}>Today's factors</div>
+    <div style={{display:"flex",gap:5}}>
+      {FACTORS.map(f=>{
+        const v=latest[f.k];
+        return<div key={f.k} style={{flex:1,background:"#ffffff07",borderRadius:10,padding:"8px 4px",textAlign:"center"}}>
+          <div style={{fontSize:16,marginBottom:3}}>{f.icon}</div>
+          <div style={{height:2,borderRadius:1,background:"#ffffff08",margin:"0 2px 3px"}}>
+            <div style={{width:`${((v-1)/4)*100}%`,height:"100%",background:f.col,borderRadius:1}}/>
+          </div>
+          <div style={{fontSize:8,color:"#666",marginBottom:1}}>{f.label}</div>
+          <div style={{fontSize:10,color:f.col,fontWeight:700}}>{v}/5</div>
+        </div>;
+      })}
+    </div>
+  </div>;
 };
 
 // ── AI TAB ──
@@ -88,7 +211,7 @@ const AiTab=({challenges,setChallenges,notify})=>{
 };
 
 // ── FEED TAB ──
-const FeedTab=({feed,setFeed,challenges,users,cu,notify,checked,setChecked,tips=[]})=>{
+const FeedTab=({feed,setFeed,challenges,users,cu,notify,checked,setChecked,tips=[],lastCheckin,onCheckin})=>{
   const [ct,setCt]=useState({});
   const react=(pid,emoji)=>setFeed(f=>f.map(p=>{if(p.id!==pid)return p;const cur=p.rx[emoji]||[],has=cur.includes(cu.id);return{...p,rx:{...p.rx,[emoji]:has?cur.filter(x=>x!==cu.id):[...cur,cu.id]}};}));
   const comment=pid=>{const t=ct[pid];if(!t?.trim())return;setFeed(f=>f.map(p=>p.id!==pid?p:{...p,comments:[...p.comments,{uid:cu.id,text:t}]}));setCt(c=>({...c,[pid]:""}));};
@@ -100,7 +223,8 @@ const FeedTab=({feed,setFeed,challenges,users,cu,notify,checked,setChecked,tips=
   ].sort((a,b)=>b._ts-a._ts);
 
   return<div>
-    {!checked&&<CheckIn onDone={()=>{setChecked(true);notify("🌅 Check-in saved!");}}/>}
+    {!checked&&<CheckIn onDone={onCheckin}/>}
+    {checked&&lastCheckin&&<ReadinessCard checkin={lastCheckin}/>}
     {items.map(item=>{
       if(item._kind==="tip") return<TipCard key={`tip-${item.id}`} tip={item}/>;
       const post=item;
@@ -234,7 +358,7 @@ const ProfileTab=({cu,lb,pd,setPd,notify})=>{const [nw,setNw]=useState("");const
 const save=()=>{const today=new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"});if(nw){const v=parseFloat(nw);if(!isNaN(v))setPd(p=>({...p,weight:[...p.weight.slice(-6),{date:today,val:v}]}))}setPd(p=>({...p,mood:[...p.mood.slice(-6),{date:today,val:nm}]}));if(nn.trim())setPd(p=>({...p,notes:[...p.notes,nn]}));setNw("");setNn("");setNm(3);notify("🔒 Saved!");};
 return<div><div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14}}><Av u={cu} s={50}/><div><div style={{fontWeight:800,fontSize:18}}>{cu.name}</div><div style={{fontSize:12,color:"#888"}}>{cu.role}{cu.is_admin?" · 👑 Admin":""}</div><div style={{fontSize:10,color:"#6EE7B7",marginTop:2}}>🔒 Private</div></div></div>
 <div style={{display:"flex",gap:7,marginBottom:10}}>{[["#"+(myR||"–"),"Rank","#6EE7B7"],[(myLB?.str||0)+"🔥","Streak","#FCD34D"],[(myLB?.pts||0).toLocaleString(),"Points","#93C5FD"]].map(([v,l,c])=><div key={l} className="card" style={{flex:1,textAlign:"center",padding:12}}><div style={{fontWeight:800,fontSize:16,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}</div>
-<div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>⚖️ Weight</div><div style={{fontSize:12,color:"#6EE7B7",fontWeight:700}}>{pd.weight[pd.weight.length-1]?.val} kg</div></div><Spk sid="wt" data={pd.weight} color="#6EE7B7"/></div>
+<ReadinessHistoryCard cu={cu}/><div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>⚖️ Weight</div><div style={{fontSize:12,color:"#6EE7B7",fontWeight:700}}>{pd.weight[pd.weight.length-1]?.val} kg</div></div><Spk sid="wt" data={pd.weight} color="#6EE7B7"/></div>
 <div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>😊 Mood</div><div style={{fontSize:12,color:"#F9A8D4",fontWeight:700}}>{pd.mood[pd.mood.length-1]?.val}/5</div></div><Spk sid="md" data={pd.mood} color="#F9A8D4"/></div>
 <div className="card" style={{marginBottom:9}}><div style={{fontWeight:700,fontSize:13,marginBottom:8}}>📓 Journal</div>{pd.notes.map((n,i)=><div key={i} style={{fontSize:12,color:"#888",borderLeft:"2px solid #ffffff10",paddingLeft:7,marginBottom:5}}>{n}</div>)}</div>
 <div className="card"><div style={{fontWeight:700,marginBottom:12}}>Log Today</div><Inp label="Weight (kg)" placeholder="72.5" type="number" min="0" value={nw} onChange={e=>setNw(e.target.value)}/><div style={{fontSize:11,color:"#888",marginBottom:6}}>Mood: <span style={{color:"#F9A8D4",fontWeight:700}}>{["😔","😕","😐","🙂","😄"][nm-1]}</span></div><div style={{display:"flex",gap:4,marginBottom:9}}>{[1,2,3,4,5].map(v=><button key={v} onClick={()=>setNm(v)} style={{flex:1,padding:"6px 0",borderRadius:9,border:`1px solid ${nm===v?"#F9A8D455":"#ffffff15"}`,background:nm===v?"#F9A8D420":"transparent",fontSize:15}}>{["😔","😕","😐","🙂","😄"][v-1]}</button>)}</div><textarea placeholder="Journal note…" rows={2} value={nn} onChange={e=>setNn(e.target.value)} style={{resize:"none",marginBottom:9}}/><button onClick={save} style={{width:"100%",background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",border:"1px solid #6EE7B755",color:"#6EE7B7",padding:"11px",borderRadius:11,fontWeight:700}}>🔒 Save Privately</button></div>
@@ -501,6 +625,7 @@ export default function App({ session }) {
   const [showLog,setShowLog]=useState(null);
   const [showNotifs,setShowNotifs]=useState(false);
   const [checked,setChecked]=useState(false);
+  const [lastCheckin,setLastCheckin]=useState(null);
   const [toasts,setToasts]=useState([]);
   const [pd,setPd]=useState(IP);
   const [notifs,setNotifs]=useState([
@@ -552,9 +677,27 @@ export default function App({ session }) {
       .then(({data})=>{ if(data) setUsers(data.filter(u=>u.id!==session.user.id)); });
   },[session]);
 
+  // Restore today's check-in on load (so the check-in widget doesn't re-appear)
+  useEffect(()=>{
+    if(!cu)return;
+    const todayISO=new Date().toISOString().slice(0,10);
+    supabase.from('checkins').select('*').eq('user_id',cu.id)
+      .gte('created_at',todayISO).order('created_at',{ascending:false}).limit(1)
+      .then(({data})=>{ if(data&&data.length){setLastCheckin(data[0]);setChecked(true);} });
+  },[cu]);
+
   const notify=useCallback(msg=>{const id=Date.now();setToasts(ts=>[...ts,{id,msg}]);setTimeout(()=>setToasts(ts=>ts.filter(x=>x.id!==id)),3000);},[]);
   const addNotif=useCallback((type,text)=>setNotifs(n=>[{id:Date.now(),type,text,ts:Date.now(),read:false},...n]),[]);
   const handleTipCreated=useCallback(tip=>setTips(t=>[tip,...t]),[]);
+
+  const handleCheckin=useCallback(async(scores)=>{
+    if(!cu)return;
+    const r=calcReadiness(scores);
+    const{data}=await supabase.from('checkins').insert({user_id:cu.id,...scores,readiness:r}).select().single();
+    setLastCheckin(data||{...scores,readiness:r,id:Date.now(),created_at:new Date().toISOString()});
+    setChecked(true);
+    notify("🌅 Check-in saved!");
+  },[cu,notify]);
 
   if(profileLoading) return(
     <div style={{minHeight:"100vh",background:"#080810",display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -599,7 +742,7 @@ export default function App({ session }) {
             <div style={{fontWeight:700,fontSize:17}}>Activity Feed</div>
             <Btn color="#6EE7B7" text="+ Log" onClick={()=>setShowLog(true)}/>
           </div>
-          <FeedTab feed={feed} setFeed={setFeed} challenges={challenges} users={allUsers} cu={cu} notify={notify} checked={checked} setChecked={setChecked} tips={tips}/>
+          <FeedTab feed={feed} setFeed={setFeed} challenges={challenges} users={allUsers} cu={cu} notify={notify} checked={checked} setChecked={setChecked} tips={tips} lastCheckin={lastCheckin} onCheckin={handleCheckin}/>
         </>}
         {tab==="challenges"&&<ChalTab challenges={challenges} feed={feed} cu={cu} onLog={ch=>setShowLog(ch)}/>}
         {tab==="leaderboard"&&<LbTab lb={lb} users={allUsers} challenges={challenges} cu={cu}/>}

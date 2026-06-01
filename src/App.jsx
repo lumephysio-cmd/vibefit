@@ -54,7 +54,7 @@ const TipCard=({tip})=>{
           <Pill color="#6EE7B7" text="PHYSIO TIP"/>
           {tip.body_part&&<Pill color={c} text={BP_LABELS[tip.body_part]||tip.body_part}/>}
         </div>
-        <div style={{fontSize:10,color:"#555",marginTop:1}}>by Dr. Brooke 👩‍⚕️</div>
+        <div style={{fontSize:10,color:"#555",marginTop:1}}>by Physio Brooke 👩‍⚕️</div>
       </div>
     </div>
     <div style={{fontWeight:700,fontSize:14,marginBottom:6}}>{tip.title}</div>
@@ -222,7 +222,7 @@ const ReadinessCard=({checkin})=>{
           <Pill color="#6EE7B7" text="TODAY"/>
           <Pill color="#555" text={timeLabel}/>
         </div>
-        <div style={{fontSize:11,color:"#888"}}>Daily readiness · by Dr. Brooke 👩‍⚕️</div>
+        <div style={{fontSize:11,color:"#888"}}>Daily readiness · by Physio Brooke 👩‍⚕️</div>
       </div>
     </div>
     <div style={{display:"flex",gap:5,marginBottom:10}}>
@@ -379,7 +379,7 @@ const ErgonomicsCheck=({cu,notify,awardBadge})=>{
       </div>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
         <div style={{width:52,height:52,borderRadius:14,background:`${cfg.col}20`,border:`2px solid ${cfg.col}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>{cfg.icon}</div>
-        <div><div style={{fontWeight:800,fontSize:15,color:cfg.col}}>{cfg.label}</div><div style={{fontSize:11,color:"#888",marginTop:1}}>Worksite ergonomics · by Dr. Brooke 👩‍⚕️</div></div>
+        <div><div style={{fontWeight:800,fontSize:15,color:cfg.col}}>{cfg.label}</div><div style={{fontSize:11,color:"#888",marginTop:1}}>Worksite ergonomics · by Physio Brooke 👩‍⚕️</div></div>
       </div>
       <div style={{fontSize:11,fontWeight:700,color:"#888",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Top Recommendations</div>
       {recs.map((rec,i)=><div key={i} style={{background:"#ffffff07",borderRadius:11,padding:"10px 12px",marginBottom:8,display:"flex",gap:9,alignItems:"flex-start"}}>
@@ -1487,7 +1487,7 @@ export default function App({ session }) {
   const unread=notifs.filter(n=>!n.read).length;
   const myR=lb.findIndex(e=>e.uid===cu?.id)+1;
   const allUsers=[cu,...users.filter(u=>u.id!==cu?.id)];
-  const NAV=[["feed","Feed","📣"],["challenges","Train","🏆"],["leaderboard","Board","🥇"],["messages","DMs","💬"],["physio","Physio","🩺"],["ai","AI ✨","🤖"],...(cu?.is_admin?[["admin","Admin","⚙️"]]:[]),["profile","Me","👤"]];
+  const NAV=[["feed","Feed","📣"],["challenges","Train","🏆"],["leaderboard","Board","🥇"],["messages","DMs","💬"],["physio","Physio","🩺"],...(cu?.is_admin?[["ai","AI ✨","🤖"],["admin","Admin","⚙️"]]:[]),["profile","Me","👤"]];
   // Nudge: how many teammates logged activity today (excluding self)
   const todayLogs=feed.filter(p=>new Date(p.ts).toDateString()===todayStr());
   const iLoggedToday=todayLogs.some(p=>p.uid===cu?.id);

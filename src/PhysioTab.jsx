@@ -495,7 +495,7 @@ const PostureDiagram = () => {
       )}
       {!hover && (
         <div style={{textAlign:'center',fontSize:11,color:'#555',marginTop:6}}>
-          Tap any highlighted point for Dr. Brooke's note
+          Tap any highlighted point for Physio Brooke's note
         </div>
       )}
     </div>
@@ -549,7 +549,7 @@ export default function PhysioTab({ cu }) {
         <span style={{ fontWeight: 700, fontSize: 17 }}>🩺 Physio Resources</span>
       </div>
       <div style={{ fontSize: 12, color: '#888', marginBottom: 14 }}>
-        Evidence-based desk stretches &amp; posture guidance by Dr. Brooke 👩‍⚕️
+        Evidence-based desk stretches &amp; posture guidance by Physio Brooke 👩‍⚕️
       </div>
 
       {/* Sub-nav */}
@@ -649,7 +649,7 @@ export default function PhysioTab({ cu }) {
                     <div style={{ background: `${area.color}0d`, border: `1px solid ${area.color}22`, borderRadius: 10, padding: '10px 13px', marginTop: 10, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                       <span style={{ fontSize: 16, flexShrink: 0 }}>👩‍⚕️</span>
                       <div>
-                        <div style={{ fontSize: 10, color: area.color, fontWeight: 700, marginBottom: 3 }}>WHY THIS WORKS · Dr. Brooke</div>
+                        <div style={{ fontSize: 10, color: area.color, fontWeight: 700, marginBottom: 3 }}>WHY THIS WORKS · Physio Brooke</div>
                         <div style={{ fontSize: 11, color: '#aaa', lineHeight: 1.6 }}>{s.physio}</div>
                       </div>
                     </div>
@@ -671,7 +671,7 @@ export default function PhysioTab({ cu }) {
           <div style={{ background: 'linear-gradient(135deg,#6EE7B710,#93C5FD08)', border: '1px solid #6EE7B725', borderRadius: 16, padding: 16, marginBottom: 14 }}>
             <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Ideal Seated Posture</div>
             <div style={{ fontSize: 11, color: '#888', marginBottom: 16 }}>
-              Tap any highlighted point for Dr. Brooke's note 👇
+              Tap any highlighted point for Physio Brooke's note 👇
             </div>
             <PostureDiagram />
           </div>

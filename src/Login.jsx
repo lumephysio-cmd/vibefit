@@ -48,8 +48,10 @@ export default function Login({ onSwitch }) {
     if (!email.trim()) { setError('Please enter your email address.'); return }
     setLoading(true)
     setError('')
+    // Always redirect to the live site, not localhost
+    const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: window.location.origin,
+      redirectTo: siteUrl,
     })
     if (error) setError(error.message)
     else setForgotSent(true)

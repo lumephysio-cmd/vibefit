@@ -60,12 +60,102 @@ const TipCard=({tip})=>{
 
 // ── CHECK-IN ──
 const CheckIn=({onDone})=>{
-  const [step,setStep]=useState(0);const [scores,setScores]=useState({});
-  const STEPS=[{k:"mood",q:"How's your mood?",opts:["😴","😕","😐","🙂","😄"],color:"#F9A8D4"},{k:"energy",q:"Energy level?",opts:["🪫","😮‍💨","😌","⚡","🚀"],color:"#FCD34D"},{k:"water",q:"Water intake so far?",opts:["🏜️","💧","🥛","💦","🌊"],color:"#93C5FD"},{k:"sleep",q:"Sleep last night?",opts:["😵","😪","😴","🛌","⭐"],color:"#6EE7B7"}];
-  if(step>=STEPS.length){const total=Object.values(scores).reduce((a,b)=>a+b,0);const col=total<=8?"#F9A8D4":total<=12?"#FCD34D":"#6EE7B7";return<div style={{background:"linear-gradient(135deg,#6EE7B715,#93C5FD0a)",border:"1px solid #6EE7B733",borderRadius:18,padding:18,marginBottom:14,textAlign:"center"}}><div style={{fontSize:30,marginBottom:6}}>✅</div><div style={{fontWeight:800,fontSize:16,marginBottom:2}}>Check-in done!</div><div style={{fontWeight:800,fontSize:34,color:col,marginBottom:4}}>{total}/20</div><div style={{fontSize:13,color:col,marginBottom:14}}>{total<=8?"Take it easy 🌿":total<=12?"Solid start! 💪":"You're on fire! 🔥"}</div><button onClick={()=>onDone(scores)} style={{background:"#6EE7B722",border:"1px solid #6EE7B744",color:"#6EE7B7",borderRadius:10,padding:"7px 20px",fontWeight:700}}>Done</button></div>;}
+  const [step,setStep]=useState(0);
+  const [scores,setScores]=useState({});
+  const [sleepHours,setSleepHours]=useState(7);
+  const [waterGlasses,setWaterGlasses]=useState(4);
+  const STEPS=[
+    {k:"sleep",q:"Sleep quality last night?",subQ:"How long did you sleep?",hasHours:true,opts:["😵","😪","😴","🛌","⭐"],color:"#6EE7B7"},
+    {k:"energy",q:"Energy level right now?",opts:["🪫","😮‍💨","😌","⚡","🚀"],color:"#FCD34D"},
+    {k:"mood",q:"How's your mood?",opts:["😴","😕","😐","🙂","😄"],color:"#F9A8D4"},
+    {k:"water",q:"How much water today?",isWater:true,color:"#93C5FD"},
+  ];
+  const stepBtn=(col,dis)=>({width:38,height:38,borderRadius:10,border:`1px solid ${col}33`,background:`${col}18`,color:col,fontWeight:900,fontSize:22,display:"flex",alignItems:"center",justifyContent:"center",opacity:dis?.3:1,cursor:dis?"default":"pointer"});
+  const wrap={background:"linear-gradient(135deg,#6EE7B715,#93C5FD0a)",border:"1px solid #6EE7B733",borderRadius:18,padding:18,marginBottom:14};
+  const Dots=({c})=>(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+      <div style={{fontWeight:800,fontSize:13}}>🌅 Daily Check-In</div>
+      <div style={{display:"flex",gap:4}}>{STEPS.map((_,i)=><div key={i} style={{width:18,height:3,borderRadius:2,background:i<step?c.color:"#ffffff15"}}/>)}</div>
+    </div>
+  );
+  // Done screen
+  if(step>=STEPS.length) return(
+    <div style={{...wrap,textAlign:"center"}}>
+      <div style={{fontSize:28,marginBottom:8}}>✅</div>
+      <div style={{fontWeight:800,fontSize:15,marginBottom:12}}>Check-in complete!</div>
+      <div style={{display:"flex",gap:8,justifyContent:"center",marginBottom:18}}>
+        <span style={{background:"#6EE7B715",border:"1px solid #6EE7B730",borderRadius:20,padding:"5px 13px",fontSize:12,color:"#6EE7B7",fontWeight:700}}>😴 {sleepHours}h sleep</span>
+        <span style={{background:"#93C5FD15",border:"1px solid #93C5FD30",borderRadius:20,padding:"5px 13px",fontSize:12,color:"#93C5FD",fontWeight:700}}>💧 {waterGlasses*250}ml water</span>
+      </div>
+      <button onClick={()=>onDone({...scores,sleepHours,waterGlasses})} style={{background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",border:"1px solid #6EE7B755",color:"#6EE7B7",borderRadius:11,padding:"11px 28px",fontWeight:800,fontSize:14}}>
+        See my readiness →
+      </button>
+    </div>
+  );
   const cur=STEPS[step];
-  return<div style={{background:"linear-gradient(135deg,#6EE7B715,#93C5FD0a)",border:"1px solid #6EE7B733",borderRadius:18,padding:18,marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{fontWeight:800,fontSize:14}}>🌅 Daily Check-In</div><div style={{display:"flex",gap:4}}>{STEPS.map((_,i)=><div key={i} style={{width:18,height:3,borderRadius:2,background:i<step?cur.color:"#ffffff15"}}/>)}</div></div><div style={{fontWeight:700,fontSize:15,marginBottom:12}}>{cur.q}</div><div style={{display:"flex",gap:6}}>{cur.opts.map((emoji,i)=>{const v=i+1,sel=scores[cur.k]===v;return<button key={i} onClick={()=>{setScores(s=>({...s,[cur.k]:v}));setTimeout(()=>setStep(s=>s+1),220);}} style={{flex:1,padding:"10px 4px",borderRadius:12,border:`2px solid ${sel?cur.color:"#ffffff15"}`,background:sel?`${cur.color}22`:"transparent",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}><span style={{fontSize:22}}>{emoji}</span></button>;})}
-  </div></div>;
+  // Water step — actual glasses count
+  if(cur.isWater) return(
+    <div style={wrap}>
+      <Dots c={cur}/>
+      <div style={{fontWeight:700,fontSize:15,marginBottom:2}}>{cur.q}</div>
+      <div style={{fontSize:11,color:"#888",marginBottom:14}}>1 glass ≈ 250ml</div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16,marginBottom:6}}>
+        <button onClick={()=>setWaterGlasses(w=>Math.max(0,w-1))} style={stepBtn(cur.color,waterGlasses<=0)}>−</button>
+        <div style={{textAlign:"center",minWidth:80}}>
+          <div style={{fontWeight:900,fontSize:52,color:cur.color,lineHeight:1}}>{waterGlasses}</div>
+          <div style={{fontSize:11,color:"#888",marginTop:3}}>glasses · <span style={{color:cur.color,fontWeight:700}}>{waterGlasses*250}ml</span></div>
+        </div>
+        <button onClick={()=>setWaterGlasses(w=>Math.min(15,w+1))} style={stepBtn(cur.color,waterGlasses>=15)}>+</button>
+      </div>
+      <div style={{background:"#ffffff10",borderRadius:4,height:6,margin:"6px 0 4px"}}>
+        <div style={{width:`${Math.min(100,(waterGlasses/8)*100)}%`,height:"100%",background:cur.color,borderRadius:4,transition:"width .3s"}}/>
+      </div>
+      <div style={{fontSize:11,textAlign:"center",color:waterGlasses>=8?cur.color:"#888",marginBottom:14}}>{waterGlasses>=8?"✅ Daily goal reached!":"Target: 8 glasses (2,000ml)"}</div>
+      <button onClick={()=>{const s=waterGlasses>=8?5:waterGlasses>=5?4:waterGlasses>=3?3:waterGlasses>=1?2:1;setScores(sc=>({...sc,water:s}));setStep(st=>st+1);}} style={{width:"100%",padding:"11px",borderRadius:11,border:`1px solid ${cur.color}44`,background:`${cur.color}18`,color:cur.color,fontWeight:800,fontSize:14}}>Next →</button>
+    </div>
+  );
+  // Sleep step — quality emoji + actual hours
+  if(cur.hasHours) return(
+    <div style={wrap}>
+      <Dots c={cur}/>
+      <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>{cur.q}</div>
+      <div style={{display:"flex",gap:6,marginBottom:14}}>
+        {cur.opts.map((emoji,i)=>{const v=i+1,sel=scores[cur.k]===v;return(
+          <button key={i} onClick={()=>setScores(s=>({...s,[cur.k]:v}))} style={{flex:1,padding:"10px 4px",borderRadius:12,border:`2px solid ${sel?cur.color:"#ffffff15"}`,background:sel?`${cur.color}22`:"transparent",display:"flex",flexDirection:"column",alignItems:"center"}}>
+            <span style={{fontSize:22}}>{emoji}</span>
+          </button>
+        );})}
+      </div>
+      <div style={{fontSize:12,color:"#888",marginBottom:8}}>{cur.subQ}</div>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
+        <button onClick={()=>setSleepHours(h=>Math.max(3,parseFloat((h-.5).toFixed(1))))} style={stepBtn(cur.color,sleepHours<=3)}>−</button>
+        <div style={{flex:1,textAlign:"center"}}>
+          <span style={{fontWeight:900,fontSize:34,color:cur.color}}>{sleepHours}</span>
+          <span style={{fontSize:13,color:"#888"}}> hrs</span>
+        </div>
+        <button onClick={()=>setSleepHours(h=>Math.min(12,parseFloat((h+.5).toFixed(1))))} style={stepBtn(cur.color,sleepHours>=12)}>+</button>
+      </div>
+      <div style={{background:"#ffffff10",borderRadius:4,height:5,margin:"0 0 5px"}}>
+        <div style={{width:`${Math.min(100,(sleepHours/8)*100)}%`,height:"100%",background:cur.color,borderRadius:4,transition:"width .3s"}}/>
+      </div>
+      <div style={{fontSize:11,textAlign:"center",marginBottom:14,color:sleepHours>=7?cur.color:"#888"}}>{sleepHours>=8?"✅ Great sleep!":sleepHours>=7?"Good rest — above average":"Aim for 7–9 hours"}</div>
+      <button disabled={!scores[cur.k]} onClick={()=>setStep(s=>s+1)} style={{width:"100%",padding:"11px",borderRadius:11,border:`1px solid ${cur.color}44`,background:scores[cur.k]?`${cur.color}18`:"#ffffff08",color:scores[cur.k]?cur.color:"#555",fontWeight:800,fontSize:14,opacity:scores[cur.k]?1:.5}}>Next →</button>
+    </div>
+  );
+  // Energy / mood — emoji, auto-advance
+  return(
+    <div style={wrap}>
+      <Dots c={cur}/>
+      <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>{cur.q}</div>
+      <div style={{display:"flex",gap:6}}>
+        {cur.opts.map((emoji,i)=>{const v=i+1,sel=scores[cur.k]===v;return(
+          <button key={i} onClick={()=>{setScores(s=>({...s,[cur.k]:v}));setTimeout(()=>setStep(s=>s+1),220);}} style={{flex:1,padding:"10px 4px",borderRadius:12,border:`2px solid ${sel?cur.color:"#ffffff15"}`,background:sel?`${cur.color}22`:"transparent",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+            <span style={{fontSize:22}}>{emoji}</span>
+          </button>
+        );})}
+      </div>
+    </div>
+  );
 };
 
 // ── READINESS CARD (shown in feed after check-in) ──
@@ -73,34 +163,47 @@ const ReadinessCard=({checkin})=>{
   const r=checkin.readiness;
   const col=readinessColor(r);
   const label=readinessLabel(r);
+  const hour=checkin.check_in_hour??new Date(checkin.created_at||Date.now()).getHours();
+  const timeLabel=hour<11?"☀️ Morning":hour<14?"🌤 Midday":hour<18?"🌇 Afternoon":"🌙 Evening";
+  // Factor display — show actual measurements when available, else 1–5 rating
   const FACTORS=[
-    {k:"sleep",label:"Sleep",icon:"😴",col:"#6EE7B7"},
-    {k:"energy",label:"Energy",icon:"⚡",col:"#FCD34D"},
-    {k:"mood",label:"Mood",icon:"😊",col:"#F9A8D4"},
-    {k:"water",label:"Hydration",icon:"💧",col:"#93C5FD"},
+    {k:"sleep",label:"Sleep",icon:"😴",col:"#6EE7B7",
+      disp:v=>checkin.sleep_hours!=null?`${checkin.sleep_hours}h`:`${v}/5`,
+      pct:v=>checkin.sleep_hours!=null?Math.min(1,checkin.sleep_hours/8):(v-1)/4},
+    {k:"energy",label:"Energy",icon:"⚡",col:"#FCD34D",disp:v=>`${v}/5`,pct:v=>(v-1)/4},
+    {k:"mood",label:"Mood",icon:"😊",col:"#F9A8D4",disp:v=>`${v}/5`,pct:v=>(v-1)/4},
+    {k:"water",label:"Hydration",icon:"💧",col:"#93C5FD",
+      disp:v=>checkin.water_ml!=null?(checkin.water_ml>=1000?`${(checkin.water_ml/1000).toFixed(1)}L`:`${checkin.water_ml}ml`):`${v}/5`,
+      pct:v=>checkin.water_ml!=null?Math.min(1,checkin.water_ml/2000):(v-1)/4},
   ];
-  // Find weakest factor for the targeted insight
   const weakest=FACTORS.reduce((a,b)=>checkin[a.k]<=checkin[b.k]?a:b);
   const INSIGHTS={
     sleep:[
-      "Sleep deprivation raises pain sensitivity and tightens your muscles. Take regular movement breaks and don't push hard today.",
-      "Excellent sleep means better tissue repair and spinal disc rehydration overnight. Your body is ready to move! 💪"
+      "Sleep deprivation raises pain sensitivity and tightens your muscles. Take extra movement breaks and avoid heavy lifting today.",
+      "Excellent sleep = better tissue repair and spinal disc rehydration overnight. Your body is primed to move! 💪"
     ],
     energy:[
-      "Low energy increases injury risk — your muscles tire faster and form breaks down. Stick to gentle movement today.",
+      "Low energy increases injury risk — muscles fatigue faster and form breaks down. Stick to gentle movement today.",
       "High energy signals your nervous system is dialled in. A great day for a challenging workout or long walk."
     ],
     mood:[
-      "Stress physically contracts your neck, jaw and shoulder muscles. Try 3 slow deep breaths right now — it genuinely releases tension.",
-      "Positive mood means better motor patterns and more motivated movement. Let your body express it!"
+      "Stress physically contracts your neck, jaw and traps. Try 3 slow deep breaths right now — it genuinely releases that tension.",
+      "Positive mood correlates with better motor patterns and more motivated movement. Let your body express it today!"
     ],
     water:[
-      "Spinal discs are 80% water — dehydration compresses them faster and stiffens your joints. Drink a big glass before your next task.",
+      "Spinal discs are 80% water — under-hydration compresses them faster and stiffens your joints. Drink a big glass before your next task.",
       "Well hydrated joints move freely and muscles fire efficiently. Keep topping up throughout the day! 💧"
     ],
   };
-  const insight=r<45
-    ?"Your readiness is low today. Prioritise the basics: water, gentle movement and rest. Your body is asking for recovery."
+  // Time-of-day secondary note
+  const timeNotes={
+    evening:"Evening check-in — your recovery for tomorrow starts now. Wind down, hydrate and protect your sleep tonight.",
+    afternoon:"Afternoon check-in — if energy is dipping, a 5-min movement break beats caffeine every time.",
+    midday:"Midday check-in — halfway through! Keep your hydration up and take a movement break soon.",
+  };
+  const timeKey=hour>=17?"evening":hour>=13?"afternoon":hour>=11?"midday":null;
+  const mainInsight=r<45
+    ?"Your readiness is low today. Prioritise the basics: hydrate, gentle movement and rest. Your body is asking for recovery."
     :INSIGHTS[weakest.k][checkin[weakest.k]>=3?1:0];
 
   return<div className="card fu" style={{marginBottom:12,background:"linear-gradient(135deg,#6EE7B710,#93C5FD08)",borderColor:"#6EE7B730"}}>
@@ -110,9 +213,10 @@ const ReadinessCard=({checkin})=>{
         <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:col}}>{r}</div>
       </div>
       <div style={{flex:1}}>
-        <div style={{display:"flex",gap:5,alignItems:"center",marginBottom:2}}>
+        <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap",marginBottom:3}}>
           <span style={{fontWeight:800,fontSize:16,color:col}}>{label}</span>
           <Pill color="#6EE7B7" text="TODAY"/>
+          <Pill color="#555" text={timeLabel}/>
         </div>
         <div style={{fontSize:11,color:"#888"}}>Daily readiness · by Dr. Brooke 👩‍⚕️</div>
       </div>
@@ -123,16 +227,19 @@ const ReadinessCard=({checkin})=>{
         return<div key={f.k} style={{flex:1,background:"#ffffff07",borderRadius:10,padding:"8px 4px",textAlign:"center"}}>
           <div style={{fontSize:17,marginBottom:4}}>{f.icon}</div>
           <div style={{height:3,borderRadius:2,background:"#ffffff10",margin:"0 3px 3px"}}>
-            <div style={{width:`${((v-1)/4)*100}%`,height:"100%",background:f.col,borderRadius:2,transition:"width .6s"}}/>
+            <div style={{width:`${f.pct(v)*100}%`,height:"100%",background:f.col,borderRadius:2,transition:"width .6s"}}/>
           </div>
           <div style={{fontSize:8,color:"#666"}}>{f.label}</div>
-          <div style={{fontSize:10,color:f.col,fontWeight:700}}>{v}/5</div>
+          <div style={{fontSize:10,color:f.col,fontWeight:700}}>{f.disp(v)}</div>
         </div>;
       })}
     </div>
     <div style={{background:"#ffffff08",borderRadius:11,padding:"10px 13px",display:"flex",gap:8,alignItems:"flex-start"}}>
       <span style={{fontSize:18,flexShrink:0}}>👩‍⚕️</span>
-      <div style={{fontSize:12,color:"#bbb",lineHeight:1.6}}>{insight}</div>
+      <div>
+        <div style={{fontSize:12,color:"#bbb",lineHeight:1.6,marginBottom:timeKey?6:0}}>{mainInsight}</div>
+        {timeKey&&<div style={{fontSize:11,color:"#666",lineHeight:1.5,borderTop:"1px solid #ffffff0f",paddingTop:5}}>{timeNotes[timeKey]}</div>}
+      </div>
     </div>
   </div>;
 };
@@ -690,11 +797,16 @@ export default function App({ session }) {
   const addNotif=useCallback((type,text)=>setNotifs(n=>[{id:Date.now(),type,text,ts:Date.now(),read:false},...n]),[]);
   const handleTipCreated=useCallback(tip=>setTips(t=>[tip,...t]),[]);
 
-  const handleCheckin=useCallback(async(scores)=>{
+  const handleCheckin=useCallback(async(payload)=>{
     if(!cu)return;
+    const{sleepHours,waterGlasses,...scores}=payload;
     const r=calcReadiness(scores);
-    const{data}=await supabase.from('checkins').insert({user_id:cu.id,...scores,readiness:r}).select().single();
-    setLastCheckin(data||{...scores,readiness:r,id:Date.now(),created_at:new Date().toISOString()});
+    const nowHour=new Date().getHours();
+    const{data}=await supabase.from('checkins').insert({
+      user_id:cu.id,...scores,readiness:r,
+      sleep_hours:sleepHours,water_ml:waterGlasses*250,check_in_hour:nowHour
+    }).select().single();
+    setLastCheckin(data||{...scores,readiness:r,sleep_hours:sleepHours,water_ml:waterGlasses*250,check_in_hour:nowHour,id:Date.now(),created_at:new Date().toISOString()});
     setChecked(true);
     notify("🌅 Check-in saved!");
   },[cu,notify]);

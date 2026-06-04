@@ -844,6 +844,141 @@ const BadgesGrid=({badges,cu})=>{
   );
 };
 
+// ── BODY MAP ──
+const BodyMap=({value,onChange})=>{
+  const [view,setView]=useState('front');
+  const zp=(id)=>{
+    const sel=value===id;
+    return{fill:sel?'#F9A8D430':'#93C5FD07',stroke:sel?'#F9A8D4':'#93C5FD30',strokeWidth:sel?2:1,style:{cursor:'pointer'},onClick:()=>onChange(value===id?'':id)};
+  };
+  const lp={fontSize:7,fill:'#ffffff55',fontFamily:'system-ui',pointerEvents:'none',textAnchor:'middle'};
+  const slp={fontSize:7,fill:'#F9A8D4',fontFamily:'system-ui',fontWeight:'700',pointerEvents:'none',textAnchor:'middle'};
+  const lbl=(id,x,y,t)=><text key={'t'+id} x={x} y={y} {...(value===id?slp:lp)}>{t}</text>;
+
+  /* Silhouette paths shared between front/back */
+  const silhouette='#93C5FD18';
+  const silS='#93C5FD40';
+
+  return(
+    <div>
+      {/* Front / Back toggle */}
+      <div style={{display:'flex',gap:6,justifyContent:'center',marginBottom:8}}>
+        {[['front','Front view'],['back','Back view']].map(([v,l])=>(
+          <button key={v} onClick={()=>setView(v)} style={{padding:'4px 14px',borderRadius:20,border:`1px solid ${view===v?'#F9A8D455':'#ffffff18'}`,background:view===v?'#F9A8D420':'transparent',color:view===v?'#F9A8D4':'#888',fontWeight:view===v?700:400,fontSize:11}}>{l}</button>
+        ))}
+      </div>
+
+      {/* R / L labels */}
+      <div style={{display:'flex',justifyContent:'space-between',padding:'0 28px 4px',fontSize:11,fontWeight:800,color:'#6EE7B7'}}>
+        <span>R</span><span style={{fontSize:9,color:'#555',fontWeight:400,alignSelf:'center'}}>patient perspective</span><span>L</span>
+      </div>
+
+      <svg viewBox="0 0 200 430" style={{width:'100%',maxWidth:240,display:'block',margin:'0 auto'}}>
+
+        {/* ── BODY OUTLINE (background silhouette) ── */}
+        {view==='front'&&<>
+          {/* Body base outline */}
+          <ellipse cx="100" cy="30" rx="23" ry="28" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M94 56 L94 76 L106 76 L106 56Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          {/* Torso */}
+          <path d="M88 76 L112 76 L124 114 L126 155 L126 210 L74 210 L74 155 L76 114Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          {/* Shoulders */}
+          <path d="M88 76 L56 84 L54 115 L87 115 L87 76Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M112 76 L144 84 L146 115 L113 115 L113 76Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          {/* Arms */}
+          <path d="M36 84 L56 84 L56 170 L36 170Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M144 84 L164 84 L164 170 L144 170Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M35 170 L55 170 L55 268 L35 268Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M145 170 L165 170 L165 268 L145 268Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          {/* Hips */}
+          <path d="M74 210 L100 210 L100 252 L68 252Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M100 210 L126 210 L132 252 L100 252Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          {/* Thighs */}
+          <path d="M68 252 L100 252 L100 322 L70 322Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M100 252 L132 252 L130 322 L100 322Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          {/* Knees */}
+          <path d="M70 322 L100 322 L100 346 L71 346Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M100 322 L130 322 L129 346 L100 346Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          {/* Shins */}
+          <path d="M72 346 L99 346 L98 416 L73 416Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M101 346 L128 346 L127 416 L102 416Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+        </>}
+        {view==='back'&&<>
+          <ellipse cx="100" cy="30" rx="23" ry="28" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M94 56 L94 76 L106 76 L106 56Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M88 76 L112 76 L124 114 L126 155 L126 210 L74 210 L74 155 L76 114Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M88 76 L56 84 L54 115 L87 115 L87 76Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M112 76 L144 84 L146 115 L113 115 L113 76Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M36 84 L56 84 L56 170 L36 170Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M144 84 L164 84 L164 170 L144 170Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M35 170 L55 170 L55 268 L35 268Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M145 170 L165 170 L165 268 L145 268Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M74 210 L100 210 L100 252 L68 252Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M100 210 L126 210 L132 252 L100 252Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M68 252 L100 252 L100 322 L70 322Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M100 252 L132 252 L130 322 L100 322Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M70 322 L100 322 L100 346 L71 346Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M100 322 L130 322 L129 346 L100 346Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M72 346 L99 346 L98 416 L73 416Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+          <path d="M101 346 L128 346 L127 416 L102 416Z" fill={silhouette} stroke={silS} strokeWidth="1"/>
+        </>}
+
+        {/* ── CLICKABLE ZONES ── */}
+        {view==='front'&&<>
+          <ellipse cx="100" cy="30" rx="23" ry="28" {...zp('Head / Eyes')}/>
+          {lbl('Head / Eyes',100,32,'Head')}
+          <path d="M94 56 L94 76 L106 76 L106 56Z" {...zp('Neck')}/>{lbl('Neck',100,68,'Neck')}
+          <path d="M88 76 L56 84 L54 115 L87 115 L87 76Z" {...zp('R Shoulder')}/>{lbl('R Shoulder',71,98,'R')}
+          <path d="M112 76 L144 84 L146 115 L113 115 L113 76Z" {...zp('L Shoulder')}/>{lbl('L Shoulder',129,98,'L')}
+          <path d="M88 76 L112 76 L124 114 L126 155 L74 155 L76 114Z" {...zp('Chest')}/>{lbl('Chest',100,116,'Chest')}
+          <path d="M74 155 L126 155 L126 210 L74 210Z" {...zp('Abdomen')}/>{lbl('Abdomen',100,183,'Abdomen')}
+          <path d="M36 84 L56 84 L56 170 L36 170Z" {...zp('R Upper Arm')}/>{lbl('R Upper Arm',46,128,'Arm')}
+          <path d="M144 84 L164 84 L164 170 L144 170Z" {...zp('L Upper Arm')}/>{lbl('L Upper Arm',154,128,'Arm')}
+          <path d="M35 170 L55 170 L55 268 L35 268Z" {...zp('R Forearm / Wrist')}/>{lbl('R Forearm / Wrist',45,220,'Wrist')}
+          <path d="M145 170 L165 170 L165 268 L145 268Z" {...zp('L Forearm / Wrist')}/>{lbl('L Forearm / Wrist',155,220,'Wrist')}
+          <path d="M74 210 L100 210 L100 252 L68 252Z" {...zp('R Hip')}/>{lbl('R Hip',86,232,'Hip')}
+          <path d="M100 210 L126 210 L132 252 L100 252Z" {...zp('L Hip')}/>{lbl('L Hip',114,232,'Hip')}
+          <path d="M68 252 L100 252 L100 322 L70 322Z" {...zp('R Thigh')}/>{lbl('R Thigh',85,287,'Thigh')}
+          <path d="M100 252 L132 252 L130 322 L100 322Z" {...zp('L Thigh')}/>{lbl('L Thigh',115,287,'Thigh')}
+          <path d="M70 322 L100 322 L100 346 L71 346Z" {...zp('R Knee')}/>{lbl('R Knee',85,336,'Knee')}
+          <path d="M100 322 L130 322 L129 346 L100 346Z" {...zp('L Knee')}/>{lbl('L Knee',115,336,'Knee')}
+          <path d="M72 346 L99 346 L98 416 L73 416Z" {...zp('R Shin / Calf')}/>{lbl('R Shin / Calf',85,382,'Shin')}
+          <path d="M101 346 L128 346 L127 416 L102 416Z" {...zp('L Shin / Calf')}/>{lbl('L Shin / Calf',115,382,'Shin')}
+        </>}
+        {view==='back'&&<>
+          <ellipse cx="100" cy="30" rx="23" ry="28" {...zp('Head / Eyes')}/>{lbl('Head / Eyes',100,32,'Head')}
+          <path d="M94 56 L94 76 L106 76 L106 56Z" {...zp('Neck')}/>{lbl('Neck',100,68,'Neck')}
+          <path d="M88 76 L56 84 L54 115 L87 115 L87 76Z" {...zp('R Shoulder')}/>{lbl('R Shoulder',71,98,'R')}
+          <path d="M112 76 L144 84 L146 115 L113 115 L113 76Z" {...zp('L Shoulder')}/>{lbl('L Shoulder',129,98,'L')}
+          <path d="M88 76 L112 76 L124 114 L126 155 L74 155 L76 114Z" {...zp('Upper Back')}/>{lbl('Upper Back',100,116,'Upper Back')}
+          <path d="M74 155 L126 155 L126 210 L74 210Z" {...zp('Lower Back')}/>{lbl('Lower Back',100,183,'Lower Back')}
+          <path d="M36 84 L56 84 L56 170 L36 170Z" {...zp('R Upper Arm')}/>{lbl('R Upper Arm',46,128,'Arm')}
+          <path d="M144 84 L164 84 L164 170 L144 170Z" {...zp('L Upper Arm')}/>{lbl('L Upper Arm',154,128,'Arm')}
+          <path d="M35 170 L55 170 L55 268 L35 268Z" {...zp('R Forearm / Wrist')}/>{lbl('R Forearm / Wrist',45,220,'Wrist')}
+          <path d="M145 170 L165 170 L165 268 L145 268Z" {...zp('L Forearm / Wrist')}/>{lbl('L Forearm / Wrist',155,220,'Wrist')}
+          <path d="M74 210 L100 210 L100 252 L68 252Z" {...zp('R Glute')}/>{lbl('R Glute',86,232,'Glute')}
+          <path d="M100 210 L126 210 L132 252 L100 252Z" {...zp('L Glute')}/>{lbl('L Glute',114,232,'Glute')}
+          <path d="M68 252 L100 252 L100 322 L70 322Z" {...zp('R Hamstring')}/>{lbl('R Hamstring',85,287,'Hamstring')}
+          <path d="M100 252 L132 252 L130 322 L100 322Z" {...zp('L Hamstring')}/>{lbl('L Hamstring',115,287,'Hamstring')}
+          <path d="M70 322 L100 322 L100 346 L71 346Z" {...zp('R Knee')}/>{lbl('R Knee',85,336,'Knee')}
+          <path d="M100 322 L130 322 L129 346 L100 346Z" {...zp('L Knee')}/>{lbl('L Knee',115,336,'Knee')}
+          <path d="M72 346 L99 346 L98 416 L73 416Z" {...zp('R Shin / Calf')}/>{lbl('R Shin / Calf',85,382,'Calf')}
+          <path d="M101 346 L128 346 L127 416 L102 416Z" {...zp('L Shin / Calf')}/>{lbl('L Shin / Calf',115,382,'Calf')}
+        </>}
+
+        {/* R/L side indicators */}
+        <text x="20" y="215" fontSize="9" fill="#6EE7B755" fontFamily="system-ui" textAnchor="middle" style={{pointerEvents:'none'}}>R</text>
+        <text x="180" y="215" fontSize="9" fill="#6EE7B755" fontFamily="system-ui" textAnchor="middle" style={{pointerEvents:'none'}}>L</text>
+      </svg>
+
+      {value
+        ? <div style={{textAlign:'center',fontSize:12,fontWeight:700,color:'#F9A8D4',marginTop:2}}>✓ {value}</div>
+        : <div style={{textAlign:'center',fontSize:11,color:'#555',marginTop:2}}>Tap the area that hurts</div>
+      }
+    </div>
+  );
+};
+
 // ── SYMPTOM LOG ──
 const BODY_AREAS=[["Neck","🤔"],["Upper back","🔝"],["Lower back","😣"],["Shoulders","🏋️"],["Wrists / hands","✋"],["Hips","🦵"],["Knees","🦿"],["Eyes / head","👁️"],["Chest","💗"],["Other","📍"]];
 const PAIN_TYPES=[["Aching","〰️"],["Sharp / stabbing","⚡"],["Burning","🔥"],["Stiffness","🧊"],["Tingling / numb","🔌"],["Pressure","🫷"],["Throbbing","💓"],["Fatigue","😮‍💨"]];
@@ -903,10 +1038,10 @@ const SymptomLogSection=({cu,notify})=>{
       </div>
 
       {open&&<div>
-        {/* WHERE */}
+        {/* WHERE — interactive body map */}
         <div style={{marginBottom:14}}>
-          <div style={{fontSize:11,color:"#aaa",fontWeight:700,marginBottom:7}}>📍 Where does it hurt?</div>
-          <Pill opts={BODY_AREAS} val={f.body_area} onPick={set("body_area")} col="#F9A8D4"/>
+          <div style={{fontSize:11,color:"#aaa",fontWeight:700,marginBottom:8}}>📍 Where does it hurt?</div>
+          <BodyMap value={f.body_area} onChange={set("body_area")}/>
         </div>
 
         {/* PAIN TYPE */}

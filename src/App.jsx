@@ -1146,9 +1146,208 @@ return<div>
 </div>;};
 
 // ── ADMIN TAB ──
+
+// ── Member Profile (admin drill-down) ──
+const BADGE_META={first_log:{icon:'🌟',label:'First Log'},streak_3:{icon:'🔥',label:'3-Day Streak'},streak_7:{icon:'🔥',label:'7-Day Streak'},streak_14:{icon:'💪',label:'14-Day Streak'},streak_30:{icon:'👑',label:'30-Day Streak'},challenge_complete:{icon:'🏆',label:'Challenge Done'},hydration_hero:{icon:'💧',label:'Hydration Hero'},posture_check:{icon:'🪑',label:'Posture Check'},top_of_board:{icon:'🥇',label:'Top of Board'},perfect_week:{icon:'⭐',label:'Perfect Week'},early_bird:{icon:'🌅',label:'Early Bird'},night_owl:{icon:'🦉',label:'Night Owl'},team_player:{icon:'🤝',label:'Team Player'}};
+
+const MemberProfile=({member,feed,challenges,cu,onBack,teamColor,session,notify})=>{
+  const [sec,setSec]=useState('overview');
+  const [symptoms,setSymptoms]=useState([]);
+  const [badges,setBadges]=useState([]);
+  const [checkins,setCheckins]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const col=teamColor||member.color||'#6EE7B7';
+  const intCol=i=>i<=3?'#6EE7B7':i<=6?'#FCD34D':i<=8?'#FB923C':'#F87171';
+
+  useEffect(()=>{
+    setLoading(true);
+    Promise.all([
+      supabase.from('symptom_logs').select('*').eq('user_id',member.id).order('created_at',{ascending:false}).limit(50),
+      supabase.from('user_badges').select('*').eq('user_id',member.id).order('created_at',{ascending:false}),
+      supabase.from('checkins').select('*').eq('user_id',member.id).order('created_at',{ascending:false}).limit(30),
+    ]).then(([sym,bdg,chk])=>{
+      if(sym.data)setSymptoms(sym.data);
+      if(bdg.data)setBadges(bdg.data);
+      if(chk.data)setCheckins(chk.data);
+      setLoading(false);
+    });
+  },[member.id]);
+
+  const today7=new Date(Date.now()-7*864e5);
+  const memberFeed=[...feed].filter(p=>p.uid===member.id).sort((a,b)=>b.ts-a.ts);
+  const weekFeed=memberFeed.filter(p=>new Date(p.ts)>=today7);
+  const weekPts=weekFeed.reduce((s,p)=>s+(p.val||1),0);
+  const lastActive=memberFeed[0]?.ts||null;
+  const avgReadiness=checkins.length>0?Math.round(checkins.slice(0,7).reduce((s,c)=>s+(c.readiness_score||0),0)/Math.min(checkins.length,7)):0;
+  const highSev=symptoms.filter(s=>s.intensity>=7).length;
+
+  const TSECS=[['overview','Overview','📊'],['symptoms','Symptoms','🩺'],['activity','Activity','🏃'],['checkins','Check-ins','✅'],['badges','Badges','🏅']];
+
+  return<div>
+    {/* Header */}
+    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
+      <button onClick={onBack} style={{background:'#ffffff0f',border:'1px solid #ffffff18',borderRadius:10,padding:'6px 12px',color:'#888',fontSize:12,fontWeight:700}}>← Team</button>
+      <Av u={member} s={46}/>
+      <div style={{flex:1}}>
+        <div style={{fontWeight:800,fontSize:17}}>{member.name}</div>
+        <div style={{fontSize:12,color:'#888'}}>{member.role||'Team member'}</div>
+        {lastActive&&<div style={{fontSize:10,color:'#555'}}>Last active {ago(lastActive)}</div>}
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:5,alignItems:'flex-end'}}>
+        {(member.checkin_streak||0)>0&&<div style={{fontSize:12,fontWeight:700,color:'#FB923C'}}>🔥 {member.checkin_streak}d</div>}
+        {highSev>0&&<div style={{fontSize:10,fontWeight:700,color:'#F87171',background:'#F8717118',borderRadius:8,padding:'2px 6px'}}>⚠️ {highSev} high pain</div>}
+      </div>
+    </div>
+
+    {/* Tabs */}
+    <div style={{display:'flex',gap:4,marginBottom:14,overflowX:'auto',paddingBottom:2}}>
+      {TSECS.map(([id,lbl,icon])=><button key={id} onClick={()=>setSec(id)} style={{flexShrink:0,padding:'7px 11px',borderRadius:10,border:`1px solid ${sec===id?col+'55':'#ffffff15'}`,background:sec===id?col+'18':'transparent',color:sec===id?col:'#888',fontWeight:700,fontSize:11}}>{icon} {lbl}{id==='symptoms'&&symptoms.length>0?` (${symptoms.length})`:''}{id==='badges'&&badges.length>0?` (${badges.length})`:''}</button>)}
+    </div>
+
+    {loading&&<div style={{textAlign:'center',padding:'40px 0',color:'#888',fontSize:13}}>Loading member data…</div>}
+
+    {/* OVERVIEW */}
+    {!loading&&sec==='overview'&&<div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8,marginBottom:12}}>
+        {[['🔥 Streak',(member.checkin_streak||0)+' days','#FB923C'],['🏆 This week',weekPts+' pts','#FCD34D'],['📊 Total logs',memberFeed.length,'#93C5FD'],['🩺 Reports',symptoms.length,symptoms.some(s=>s.intensity>=7)?'#F87171':'#6EE7B7']].map(([l,v,c])=>(
+          <div key={l} className="card" style={{padding:12,textAlign:'center',borderColor:c+'22'}}>
+            <div style={{fontWeight:900,fontSize:20,color:c,marginBottom:2}}>{v}</div>
+            <div style={{fontSize:10,color:'#888'}}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      {avgReadiness>0&&<div className="card" style={{marginBottom:10,display:'flex',gap:14,alignItems:'center'}}>
+        <div style={{position:'relative',width:64,height:64,flexShrink:0}}>
+          <svg width={64} height={64} style={{transform:'rotate(-90deg)'}}>
+            <circle cx={32} cy={32} r={26} fill="none" stroke="#ffffff0f" strokeWidth={5}/>
+            <circle cx={32} cy={32} r={26} fill="none" stroke={avgReadiness>=75?'#6EE7B7':avgReadiness>=50?'#FCD34D':'#F87171'} strokeWidth={5} strokeDasharray={`${avgReadiness/100*163} 163`} strokeLinecap="round"/>
+          </svg>
+          <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:15,color:'#e8e8f0'}}>{avgReadiness}</div>
+        </div>
+        <div>
+          <div style={{fontWeight:700,marginBottom:3}}>Avg Readiness Score</div>
+          <div style={{fontSize:12,color:'#888'}}>Last {Math.min(checkins.length,7)} check-ins</div>
+          <div style={{fontSize:12,color:avgReadiness>=75?'#6EE7B7':avgReadiness>=50?'#FCD34D':'#F87171',fontWeight:700,marginTop:2}}>{avgReadiness>=75?'Consistently high 💚':avgReadiness>=50?'Moderate wellness 💛':'May need support 🔴'}</div>
+        </div>
+      </div>}
+
+      {checkins[0]&&<div className="card" style={{marginBottom:10}}>
+        <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>Latest check-in · <span style={{fontSize:11,color:'#888',fontWeight:400}}>{new Date(checkins[0].created_at).toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})}</span></div>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+          {[['😴',`${checkins[0].sleep_hours||'–'}h sleep`,'#93C5FD'],['💧',`${checkins[0].water_ml?Math.round(checkins[0].water_ml/250):'–'} glasses`,'#6EE7B7'],['😊',`Mood ${checkins[0].mood||'–'}/5`,'#F9A8D4'],['⚡',`Energy ${checkins[0].energy||'–'}/5`,'#FCD34D']].map(([icon,label,c])=>(
+            <div key={label} style={{fontSize:11,background:'#ffffff08',borderRadius:8,padding:'4px 9px',color:c}}>{icon} {label}</div>
+          ))}
+        </div>
+      </div>}
+
+      {symptoms.length>0&&<div className="card" style={{borderColor:'#F9A8D422'}}>
+        <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>🩺 Recent pain reports</div>
+        {symptoms.slice(0,3).map(s=>(
+          <div key={s.id} style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}>
+            <div style={{width:30,height:30,borderRadius:8,background:intCol(s.intensity)+'18',border:`1px solid ${intCol(s.intensity)}33`,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:12,color:intCol(s.intensity),flexShrink:0}}>{s.intensity}</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:600}}>{s.body_area} · {s.pain_type}</div>
+              <div style={{fontSize:10,color:'#666'}}>{new Date(s.created_at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}{s.activity?' · '+s.activity:''}</div>
+            </div>
+          </div>
+        ))}
+        {symptoms.length>3&&<div style={{fontSize:11,color:'#555',marginTop:2}}>+{symptoms.length-3} more — see Symptoms tab</div>}
+      </div>}
+    </div>}
+
+    {/* SYMPTOMS */}
+    {!loading&&sec==='symptoms'&&<div>
+      {symptoms.length===0?<div style={{textAlign:'center',padding:'40px 0',color:'#888'}}><div style={{fontSize:36,marginBottom:8}}>🩺</div>No symptom reports yet.</div>:<>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:12}}>
+          {[[symptoms.length,'Total','#F9A8D4'],[`${Math.round(symptoms.reduce((s,r)=>s+r.intensity,0)/symptoms.length*10)/10}/10`,'Avg severity','#FCD34D'],[highSev,'High (7+)','#F87171']].map(([v,l,c])=>(
+            <div key={l} className="card" style={{padding:10,textAlign:'center'}}>
+              <div style={{fontWeight:900,fontSize:18,color:c}}>{v}</div>
+              <div style={{fontSize:9,color:'#666'}}>{l}</div>
+            </div>
+          ))}
+        </div>
+        {symptoms.map(s=>(
+          <div key={s.id} className="card" style={{marginBottom:8,borderColor:intCol(s.intensity)+'22'}}>
+            <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+              <div style={{width:38,height:38,borderRadius:10,background:intCol(s.intensity)+'18',border:`1px solid ${intCol(s.intensity)}33`,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:15,color:intCol(s.intensity),flexShrink:0}}>{s.intensity}</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:13}}>{s.body_area}</div>
+                <div style={{fontSize:11,color:'#aaa',marginBottom:4}}>{s.pain_type}{s.duration?' · '+s.duration:''}</div>
+                <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:4}}>
+                  {[s.time_of_day,s.activity].filter(Boolean).map(t=><span key={t} style={{fontSize:10,background:'#ffffff0a',border:'1px solid #ffffff10',borderRadius:10,padding:'2px 7px',color:'#888'}}>{t}</span>)}
+                </div>
+                {s.notes&&<div style={{fontSize:11,color:'#666',fontStyle:'italic',marginBottom:3}}>"{s.notes}"</div>}
+                <div style={{fontSize:10,color:'#444'}}>{new Date(s.created_at).toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </>}
+    </div>}
+
+    {/* ACTIVITY */}
+    {!loading&&sec==='activity'&&<div>
+      {memberFeed.length===0?<div style={{textAlign:'center',padding:'40px 0',color:'#888'}}><div style={{fontSize:36,marginBottom:8}}>🏃</div>No activity yet.</div>
+      :memberFeed.slice(0,40).map((p,i)=>{
+        const ch=challenges.find(c=>String(c.id)===String(p.cid));
+        return<div key={i} className="card" style={{display:'flex',gap:9,alignItems:'center',marginBottom:6,padding:'10px 12px'}}>
+          <div style={{fontSize:20,flexShrink:0}}>{ch?.icon||'📊'}</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:12,fontWeight:700}}>{ch?.title||'Activity'}</div>
+            <div style={{fontSize:11,color:'#888'}}>{p.val>0?`${p.val}${ch?.unit?' '+ch.unit:''} logged`:'Completed'}</div>
+            {p.note&&<div style={{fontSize:10,color:'#555',fontStyle:'italic'}}>"{p.note}"</div>}
+          </div>
+          <div style={{fontSize:10,color:'#555',flexShrink:0}}>{ago(p.ts)}</div>
+        </div>;
+      })}
+    </div>}
+
+    {/* CHECK-INS */}
+    {!loading&&sec==='checkins'&&<div>
+      {checkins.length===0?<div style={{textAlign:'center',padding:'40px 0',color:'#888'}}><div style={{fontSize:36,marginBottom:8}}>✅</div>No check-ins yet.</div>
+      :checkins.map(c=>{
+        const score=c.readiness_score||0;
+        const sc=score>=75?'#6EE7B7':score>=50?'#FCD34D':'#F87171';
+        return<div key={c.id} className="card" style={{marginBottom:8,borderColor:sc+'22'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+            <div style={{fontSize:12,fontWeight:700,color:'#ccc'}}>{new Date(c.created_at).toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})}</div>
+            <div style={{fontWeight:800,fontSize:13,color:sc}}>Readiness {score}</div>
+          </div>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+            {[['😴',`${c.sleep_hours||'–'}h sleep`,'#93C5FD'],['💧',`${c.water_ml?Math.round(c.water_ml/250):'–'} glasses`,'#6EE7B7'],['😊',`Mood ${c.mood||'–'}/5`,'#F9A8D4'],['⚡',`Energy ${c.energy||'–'}/5`,'#FCD34D']].map(([icon,label,c2])=>(
+              <div key={label} style={{fontSize:10,background:'#ffffff08',borderRadius:8,padding:'3px 8px',color:c2}}>{icon} {label}</div>
+            ))}
+          </div>
+        </div>;
+      })}
+    </div>}
+
+    {/* BADGES */}
+    {!loading&&sec==='badges'&&<div>
+      {badges.length===0?<div style={{textAlign:'center',padding:'40px 0',color:'#888'}}><div style={{fontSize:36,marginBottom:8}}>🏅</div>No badges yet.</div>
+      :<div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
+        {badges.map(b=>{const m=BADGE_META[b.badge_type]||{icon:'🏅',label:b.badge_type};return(
+          <div key={b.id} className="card" style={{textAlign:'center',padding:12}}>
+            <div style={{fontSize:28,marginBottom:4}}>{m.icon}</div>
+            <div style={{fontSize:9,color:'#aaa',fontWeight:700,marginBottom:2}}>{m.label}</div>
+            <div style={{fontSize:8,color:'#555'}}>{new Date(b.created_at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</div>
+          </div>
+        );})}
+      </div>}
+    </div>}
+  </div>;
+};
+
 // ── Team Dashboard (per-team isolated view) ──
 const TeamDashboard=({team,members,feed,cu,challenges,onBack,notify,session})=>{
   const [sec,setSec]=useState("overview");
+  const [selectedMember,setSelectedMember]=useState(null);
+
+  // Drill into a member profile
+  if(selectedMember){
+    return<MemberProfile member={selectedMember} feed={feed} challenges={challenges} cu={cu} onBack={()=>setSelectedMember(null)} teamColor={team.color} session={session} notify={notify}/>;
+  }
   const [inviteLink,setInviteLink]=useState("");
   const [generating,setGenerating]=useState(false);
   const today7=new Date(Date.now()-7*864e5);
@@ -1236,16 +1435,19 @@ const TeamDashboard=({team,members,feed,cu,challenges,onBack,notify,session})=>{
         :members.map(u=>{
           const isActive=activeIds.has(u.id);
           const lastLog=feed.filter(p=>p.uid===u.id).sort((a,b)=>b.ts-a.ts)[0];
-          return<div key={u.id} className="card" style={{display:"flex",gap:10,alignItems:"center",marginBottom:8,borderColor:isActive?`${team.color}30`:undefined}}>
+          const wkPts=Object.fromEntries(Object.entries(weekPts));
+          return<div key={u.id} className="card" style={{display:"flex",gap:10,alignItems:"center",marginBottom:8,borderColor:isActive?`${team.color}30`:undefined,cursor:"pointer"}} onClick={()=>setSelectedMember(u)}>
             <Av u={u} s={40}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontWeight:700,fontSize:13}}>{u.name}</div>
               <div style={{fontSize:11,color:"#888"}}>{u.role||"Team member"}</div>
               {lastLog&&<div style={{fontSize:10,color:"#555"}}>Last active {ago(lastLog.ts)}</div>}
             </div>
-            <div style={{textAlign:"right",flexShrink:0}}>
-              {(u.checkin_streak||0)>0&&<div style={{fontSize:12,fontWeight:700,color:"#FB923C"}}>🔥 {u.checkin_streak}</div>}
-              {isActive&&<div style={{width:7,height:7,borderRadius:"50%",background:team.color,marginLeft:"auto",marginTop:2}}/>}
+            <div style={{textAlign:"right",flexShrink:0,display:'flex',flexDirection:'column',alignItems:'flex-end',gap:3}}>
+              {(u.checkin_streak||0)>0&&<div style={{fontSize:11,fontWeight:700,color:"#FB923C"}}>🔥 {u.checkin_streak}</div>}
+              {wkPts[u.id]>0&&<div style={{fontSize:10,color:'#FCD34D'}}>🏆 {wkPts[u.id]} pts</div>}
+              {isActive&&<div style={{width:7,height:7,borderRadius:"50%",background:team.color}}/>}
+              <div style={{fontSize:10,color:'#555',fontWeight:600}}>View →</div>
             </div>
           </div>;
         })

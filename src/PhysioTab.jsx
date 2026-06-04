@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 
 // ── STRETCH DATA ──────────────────────────────────────────────────────────────
@@ -517,6 +517,139 @@ const CHECKLIST = [
   { icon:'❌', text:'Don\'t look up at your monitor — compresses neck facet joints' },
 ];
 
+// ── BREATHING DATA ────────────────────────────────────────────────────────────
+const CNS_SECTIONS = [
+  {
+    icon:'⚡', title:'The Fight-or-Flight Response', color:'#F87171',
+    content:`When your brain perceives stress — a difficult email, a looming deadline, a tense conversation — the sympathetic nervous system fires. Your adrenal glands release cortisol and adrenaline. Heart rate climbs. Blood is redirected away from your prefrontal cortex (decision-making) to your muscles. Digestion slows. Your body is preparing to fight or flee.\n\nThe problem: your brain cannot distinguish between a tiger and a passive-aggressive Slack message. The same system fires for both. In a corporate environment, it fires dozens of times per day — leaving you wired, foggy, and exhausted by 3pm.`,
+  },
+  {
+    icon:'🌿', title:'The Parasympathetic Brake', color:'#6EE7B7',
+    content:`The parasympathetic nervous system is your recovery mode — "rest and digest." It restores blood flow to the prefrontal cortex, lowers cortisol, reduces heart rate, and enables the complex cognitive work that office jobs actually demand: problem-solving, creativity, empathy, and clear communication.\n\nYou cannot think your way into a parasympathetic state. But you can breathe your way in — in as little as 30 seconds. This is not a metaphor. It is a direct physiological pathway.`,
+  },
+  {
+    icon:'🫁', title:'Why Breathing is the Switch', color:'#93C5FD',
+    content:`Breathing is the only autonomic function you can consciously control. When you extend the exhale longer than the inhale, you activate the vagus nerve — the primary nerve of the parasympathetic system. Vagal activation slows the heart, calms the amygdala (your brain's threat centre), and restores prefrontal function.\n\nHeart Rate Variability (HRV) — the slight variation in time between heartbeats — is the gold-standard biomarker of nervous system balance. Controlled breathing directly and measurably increases HRV within 3–5 minutes.`,
+  },
+  {
+    icon:'🧠', title:'Focus & Mental Clarity', color:'#C4B5FD',
+    content:`Under sympathetic activation, attention narrows into tunnel vision — useful for physical danger, terrible for analytical work. Deliberate breathing shifts you into a broad-focus attentional state that improves working memory, creative thinking, and task-switching.\n\nResearch from Stanford and Harvard shows 5 minutes of controlled breathing before cognitive tasks improves accuracy by 8–15% and reduces error rates significantly. Elite performers — surgeons, pilots, special forces — use these protocols not for relaxation, but for performance under pressure.`,
+  },
+];
+
+const BREATH_TECHNIQUES = [
+  {
+    name:'Box Breathing',
+    subtitle:'Stress & Focus Reset',
+    icon:'⬛',
+    color:'#6EE7B7',
+    pattern:[4,4,4,4],
+    labels:['Inhale', 'Hold', 'Exhale', 'Hold'],
+    tagline:'Used by Navy SEALs before high-stakes operations.',
+    science:'Equal timing across all four phases synchronises the autonomic nervous system. 5 minutes of box breathing reduces cortisol by up to 25% and significantly increases HRV. The hold phases train your nervous system to remain calm under CO₂ accumulation — exactly what happens during high-pressure work.',
+    bestFor:['Pre-meeting clarity','Presentation nerves','Deadline pressure'],
+  },
+  {
+    name:'4-7-8 Breathing',
+    subtitle:'Deep Calm',
+    icon:'🌊',
+    color:'#93C5FD',
+    pattern:[4,7,8,0],
+    labels:['Inhale', 'Hold', 'Exhale', ''],
+    tagline:"Dr Andrew Weil's 'natural tranquiliser for the nervous system.'",
+    science:'The 7-count hold elevates CO₂ slightly, which activates GABA receptors — the same pathway targeted by anti-anxiety medication, but through chemistry your body produces naturally. The 8-count exhale triggers the baroreceptor reflex: your brain physically interprets the slow outbreath as a signal that you are safe.',
+    bestFor:['After difficult conversations','Afternoon energy crash','Pre-sleep wind-down'],
+  },
+  {
+    name:'Physiological Sigh',
+    subtitle:'Instant Stress Relief',
+    icon:'😮‍💨',
+    color:'#C4B5FD',
+    pattern:[2,1,7,0],
+    labels:['Inhale through nose', 'Quick second sniff', 'Slow exhale through mouth', ''],
+    tagline:'Stanford research: the fastest known method to reduce acute stress.',
+    science:'During stress, small alveoli (air sacs) in your lungs collapse, reducing gas-exchange efficiency and amplifying the stress response. The double inhale forcibly re-inflates them. The long exhale then offloads CO₂ rapidly, shifting your brain from sympathetic to parasympathetic dominance in a single breath cycle — often within 10 seconds.',
+    bestFor:['Immediate stress spike','Before a hard conversation','Any moment, anywhere'],
+    special:true,
+  },
+  {
+    name:'Coherent Breathing',
+    subtitle:'Peak Performance',
+    icon:'🔄',
+    color:'#FCD34D',
+    pattern:[5,0,5,0],
+    labels:['Inhale', '', 'Exhale', ''],
+    tagline:'5 breaths per minute — the resonance frequency of the human body.',
+    science:"At exactly 5-5 timing, your breathing synchronises with your cardiovascular system's natural oscillation frequency. This creates resonance — producing the highest possible HRV. Studies link this state to peak cognitive performance, superior emotional regulation, and accelerated stress recovery. Used by elite athletes before competition.",
+    bestFor:['Deep focus work','Creative problem-solving','Sustained high performance'],
+  },
+];
+
+// ── BREATHING GUIDE COMPONENT ─────────────────────────────────────────────────
+const BreathGuide = ({ t }) => {
+  const phases = t.pattern.map((d,i)=>({d,label:t.labels[i]})).filter(p=>p.d>0);
+  const [running, setRunning] = useState(false);
+  const [pi, setPi] = useState(0);
+  const [tick, setTick] = useState(phases[0].d);
+  const [cycles, setCycles] = useState(0);
+  const st = useRef({pi:0,tick:phases[0].d});
+  const timer = useRef(null);
+
+  const stop = () => {
+    clearInterval(timer.current);
+    setRunning(false); setPi(0); setTick(phases[0].d); setCycles(0);
+    st.current = {pi:0, tick:phases[0].d};
+  };
+  const go = () => {
+    st.current = {pi:0, tick:phases[0].d};
+    setPi(0); setTick(phases[0].d); setCycles(0); setRunning(true);
+    timer.current = setInterval(()=>{
+      const s = st.current;
+      if (s.tick > 1) { s.tick--; setTick(s.tick); }
+      else {
+        const npi = (s.pi+1) % phases.length;
+        if (npi===0) setCycles(c=>c+1);
+        s.pi = npi; s.tick = phases[npi].d;
+        setPi(npi); setTick(s.tick);
+      }
+    }, 1000);
+  };
+  useEffect(()=>()=>clearInterval(timer.current),[]);
+
+  const phase = phases[pi];
+  const label = phase.label.toLowerCase();
+  const expanding = label.includes('inhale') || label.includes('sniff') || (label.includes('hold') && phases[(pi+phases.length-1)%phases.length]?.label.toLowerCase().includes('inhale'));
+  const big=148, small=72;
+  const sz = running ? (expanding ? big : small) : (big+small)/2;
+  const dur = running ? phase.d : 1;
+
+  return (
+    <div style={{textAlign:'center',padding:'8px 0 4px'}}>
+      <div style={{
+        width:sz, height:sz, borderRadius:'50%',
+        background:`radial-gradient(circle at 38% 35%, ${t.color}55, ${t.color}18)`,
+        border:`2px solid ${t.color}60`,
+        margin:'0 auto 16px',
+        transition:`all ${dur*0.85}s ease-${expanding?'in':'out'}`,
+        boxShadow:`0 0 ${running?36:12}px ${t.color}${running?'55':'22'}`,
+        display:'flex',alignItems:'center',justifyContent:'center',
+      }}>
+        {running && <span style={{fontSize:30,fontWeight:900,color:t.color,userSelect:'none'}}>{tick}</span>}
+        {!running && <span style={{fontSize:26}}>{t.icon}</span>}
+      </div>
+
+      {running && <div style={{fontSize:18,fontWeight:800,color:t.color,marginBottom:4}}>{phase.label}</div>}
+      {running && cycles>0 && <div style={{fontSize:11,color:'#666',marginBottom:12}}>🔄 {cycles} cycle{cycles!==1?'s':''} complete</div>}
+      {!running && <div style={{fontSize:12,color:'#666',marginBottom:12}}>Ready when you are</div>}
+
+      <button onClick={running?stop:go} style={{
+        padding:'9px 28px', borderRadius:11, border:`1px solid ${t.color}55`,
+        background:`${t.color}1a`, color:t.color, fontWeight:800, fontSize:13, cursor:'pointer',
+      }}>{running?'Stop':'Start'}</button>
+    </div>
+  );
+};
+
 // ── MAIN COMPONENT ─────────────────────────────────────────────────────────
 export default function PhysioTab({ cu }) {
   const [sec, setSec] = useState('stretches');
@@ -554,12 +687,12 @@ export default function PhysioTab({ cu }) {
 
       {/* Sub-nav */}
       <div style={{ display: 'flex', gap: 5, marginBottom: 16, background: '#ffffff07', borderRadius: 11, padding: 3 }}>
-        {[['stretches', '🧘 Desk Stretches'], ['posture', '📐 Posture Guide']].map(([id, lbl]) => (
-          <button key={id} onClick={() => setSec(id)} style={{
-            flex: 1, padding: '8px 4px', borderRadius: 8, border: 'none',
-            background: sec === id ? '#6EE7B722' : 'transparent',
-            color: sec === id ? '#6EE7B7' : '#888',
-            fontWeight: sec === id ? 700 : 400, fontSize: 13,
+        {[['stretches','🧘 Stretches'],['posture','📐 Posture'],['breathing','🫁 Breathe']].map(([id,lbl])=>(
+          <button key={id} onClick={()=>setSec(id)} style={{
+            flex:1, padding:'8px 4px', borderRadius:8, border:'none',
+            background:sec===id?'#6EE7B722':'transparent',
+            color:sec===id?'#6EE7B7':'#888',
+            fontWeight:sec===id?700:400, fontSize:12,
           }}>{lbl}</button>
         ))}
       </div>
@@ -697,6 +830,130 @@ export default function PhysioTab({ cu }) {
               <span style={{ color: '#C4B5FD', fontWeight: 700 }}>Every 90 min</span> — stand, walk, full body reset (5 min)<br/>
               <span style={{ color: '#FCD34D', fontWeight: 700 }}>Every 3 hours</span> — complete posture reset + lower back stretches
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── BREATHING ── */}
+      {sec==='breathing' && (
+        <div>
+          {/* Hero banner */}
+          <div style={{background:'linear-gradient(135deg,#93C5FD12,#C4B5FD08)',border:'1px solid #93C5FD25',borderRadius:18,padding:'18px 16px',marginBottom:16}}>
+            <div style={{fontWeight:800,fontSize:16,marginBottom:4}}>🫁 The Science of Breathing</div>
+            <div style={{fontSize:12,color:'#aaa',lineHeight:1.65}}>
+              Your breath is the only part of your autonomic nervous system you can consciously control — and it's a direct dial between stress and calm. Understanding how it works transforms it from a passive reflex into one of the most powerful performance tools you have.
+            </div>
+          </div>
+
+          {/* CNS Education cards */}
+          {CNS_SECTIONS.map((s,i)=>(
+            <EducationCard key={i} s={s}/>
+          ))}
+
+          {/* Divider */}
+          <div style={{display:'flex',alignItems:'center',gap:10,margin:'20px 0 16px'}}>
+            <div style={{flex:1,height:1,background:'#ffffff10'}}/>
+            <div style={{fontSize:12,color:'#555',fontWeight:700}}>GUIDED TECHNIQUES</div>
+            <div style={{flex:1,height:1,background:'#ffffff10'}}/>
+          </div>
+
+          {/* Technique cards */}
+          {BREATH_TECHNIQUES.map((t,i)=>(
+            <TechniqueCard key={i} t={t}/>
+          ))}
+
+          {/* Physio note */}
+          <div style={{background:'linear-gradient(135deg,#6EE7B710,#6EE7B705)',border:'1px solid #6EE7B725',borderRadius:14,padding:'14px 16px',marginTop:4}}>
+            <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+              <span style={{fontSize:20,flexShrink:0}}>👩‍⚕️</span>
+              <div>
+                <div style={{fontWeight:700,fontSize:12,color:'#6EE7B7',marginBottom:4}}>Physio Brooke's Recommendation</div>
+                <div style={{fontSize:12,color:'#aaa',lineHeight:1.65}}>
+                  Start with <strong style={{color:'#e8e8f0'}}>Box Breathing</strong> — 3 minutes before your most demanding meeting of the day. Once that becomes a habit, add the <strong style={{color:'#e8e8f0'}}>Physiological Sigh</strong> for any acute stress moment. Together, these two techniques address 90% of what a corporate nervous system goes through in a working day.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SUB-COMPONENTS (defined after PhysioTab so they can use its scope) ────────
+function EducationCard({s}) {
+  const [open,setOpen] = useState(false);
+  return (
+    <div className="card" style={{marginBottom:10,borderColor:`${s.color}22`,cursor:'pointer'}} onClick={()=>setOpen(o=>!o)}>
+      <div style={{display:'flex',alignItems:'center',gap:10}}>
+        <div style={{width:38,height:38,borderRadius:11,background:`${s.color}18`,border:`1px solid ${s.color}33`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>{s.icon}</div>
+        <div style={{flex:1,fontWeight:700,fontSize:13,color:s.color}}>{s.title}</div>
+        <span style={{fontSize:12,color:'#555'}}>{open?'▲':'▼'}</span>
+      </div>
+      {open&&(
+        <div style={{marginTop:12}}>
+          {s.content.split('\n\n').map((para,i)=>(
+            <p key={i} style={{fontSize:12,color:'#aaa',lineHeight:1.75,margin:i===0?'0 0 10px':'10px 0 0'}}>{para}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TechniqueCard({t}) {
+  const [open,setOpen] = useState(false);
+  return (
+    <div className="card" style={{marginBottom:12,borderColor:open?`${t.color}44`:undefined}}>
+      {/* Header — tap to expand */}
+      <div style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}} onClick={()=>setOpen(o=>!o)}>
+        <div style={{width:42,height:42,borderRadius:13,background:`${t.color}18`,border:`1px solid ${t.color}33`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{t.icon}</div>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:800,fontSize:14,color:t.color}}>{t.name}</div>
+          <div style={{fontSize:11,color:'#888'}}>{t.subtitle}</div>
+        </div>
+        {/* Pattern pills */}
+        <div style={{display:'flex',gap:3,flexShrink:0}}>
+          {t.pattern.filter(d=>d>0).map((d,i)=>(
+            <div key={i} style={{background:`${t.color}18`,border:`1px solid ${t.color}33`,borderRadius:6,padding:'2px 6px',fontSize:10,fontWeight:700,color:t.color}}>{d}s</div>
+          ))}
+        </div>
+        <span style={{fontSize:12,color:'#555',marginLeft:4}}>{open?'▲':'▼'}</span>
+      </div>
+
+      {open&&(
+        <div style={{marginTop:14}}>
+          {/* Tagline */}
+          <div style={{fontSize:12,color:'#888',fontStyle:'italic',marginBottom:12,paddingBottom:12,borderBottom:'1px solid #ffffff0f'}}>"{t.tagline}"</div>
+
+          {/* Phase labels */}
+          <div style={{display:'flex',gap:4,marginBottom:14,flexWrap:'wrap'}}>
+            {t.pattern.map((d,i)=>d>0&&(
+              <div key={i} style={{background:`${t.color}12`,border:`1px solid ${t.color}25`,borderRadius:8,padding:'4px 10px',fontSize:11}}>
+                <span style={{color:t.color,fontWeight:700}}>{d}s</span>
+                <span style={{color:'#888',marginLeft:4}}>{t.labels[i]}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Animated guide */}
+          <div style={{background:`${t.color}08`,border:`1px solid ${t.color}20`,borderRadius:14,padding:'16px 14px',marginBottom:12}}>
+            <div style={{fontSize:11,fontWeight:700,color:t.color,textTransform:'uppercase',letterSpacing:.5,marginBottom:12}}>Live Guide</div>
+            <BreathGuide t={t}/>
+          </div>
+
+          {/* Science */}
+          <div style={{background:'#ffffff07',borderRadius:12,padding:'12px 14px',marginBottom:10}}>
+            <div style={{fontSize:10,color:'#6EE7B7',fontWeight:700,textTransform:'uppercase',letterSpacing:.5,marginBottom:6}}>👩‍⚕️ The Science</div>
+            <div style={{fontSize:12,color:'#aaa',lineHeight:1.7}}>{t.science}</div>
+          </div>
+
+          {/* Best for */}
+          <div style={{fontSize:11,color:'#666',marginBottom:2}}>Best for:</div>
+          <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
+            {t.bestFor.map((b,i)=>(
+              <span key={i} style={{background:`${t.color}12`,border:`1px solid ${t.color}25`,borderRadius:20,padding:'3px 10px',fontSize:11,color:t.color}}>{b}</span>
+            ))}
           </div>
         </div>
       )}

@@ -981,7 +981,7 @@ const BodyMap=({value,onChange})=>{
 
 // ── SYMPTOM LOG ──
 const BODY_AREAS=[["Neck","🤔"],["Upper back","🔝"],["Lower back","😣"],["Shoulders","🏋️"],["Wrists / hands","✋"],["Hips","🦵"],["Knees","🦿"],["Eyes / head","👁️"],["Chest","💗"],["Other","📍"]];
-const PAIN_TYPES=[["Aching","〰️"],["Sharp / stabbing","⚡"],["Burning","🔥"],["Stiffness","🧊"],["Tingling / numb","🔌"],["Pressure","🫷"],["Throbbing","💓"],["Fatigue","😮‍💨"]];
+const PAIN_TYPES=[["Aching","〰️"],["Sharp / stabbing","⚡"],["Burning","🔥"],["Stiffness","🧊"],["Tingling / numb","🔌"],["Pressure","🫷"],["Throbbing","🫀"],["Fatigue","😮‍💨"]];
 const ACTIVITIES=[["Sitting at desk","💻"],["Typing / mousing","⌨️"],["Video calls","📹"],["After exercise","🏃"],["Woke up with it","😴"],["Walking / standing","🚶"],["Lifting","📦"],["No clear cause","❓"]];
 const DURATIONS=[["< 30 mins","⚡"],["A few hours","⏳"],["All day","🌙"],["Comes & goes","🔄"],["Constant","📍"]];
 const TOD_OPTS=[["Morning","🌅"],["Mid-morning","☀️"],["Midday","🕛"],["Afternoon","🌤️"],["Evening","🌙"]];

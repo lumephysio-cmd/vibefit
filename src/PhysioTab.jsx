@@ -348,179 +348,188 @@ const STRETCHES = {
 const PostureDiagram = () => {
   const [hover, setHover] = useState(null);
   const NOTES = {
-    monitor:'Monitor top at eye level — the top edge of the screen aligns with your eyes. Screen 50–70cm away (arm\'s length). Your gaze angles slightly downward (10–20°) to the centre.',
+    monitor:'Monitor top at eye level. Screen 50–70cm away (arm\'s length). Gaze angles slightly downward 10–20° to the centre of the screen.',
     head:'Head directly over shoulders, chin slightly tucked. Every 2.5cm of forward head posture adds ~5kg of load to the cervical spine.',
-    shoulders:'Shoulders relaxed and down. Shoulder blades drawn gently toward spine. Elbows stay close to your sides — not winged out.',
+    shoulders:'Shoulders relaxed and down — not hunched up toward ears. Shoulder blades gently drawn toward spine. Elbows stay close to your sides.',
     arms:'Upper arms hang nearly vertical. Elbows at 90–120°. Forearms rest flat on the desk. Wrists neutral — not bent up or down.',
-    back:'Back at 100–110° (slight recline). Lumbar curve supported by the chair backrest. This reduces disc pressure vs sitting bolt upright.',
-    hips:'Hips at ~90–100°. Weight evenly on both sit bones. Front of seat should not press into the back of your knees.',
-    feet:'Feet flat on the floor or on a footrest. Knees at ~90°. Hips should be level with or slightly higher than knees.',
+    back:'Back at 100–110° (slight recline). Lumbar curve supported by the chair backrest. This reduces disc pressure compared to sitting bolt upright.',
+    hips:'Hips at ~90–100°. Weight evenly on both sit bones. Front of seat should not press into the backs of your knees.',
+    feet:'Feet flat on the floor or on a footrest. Knees at ~90°, level with or slightly below hips.',
   };
 
-  const lc = id => hover===id ? '#FCD34D' : '#ffffff20';
+  const lc = id => hover===id ? '#FCD34D' : '#ffffff22';
   const tc = id => hover===id ? '#FCD34D' : '#ffffff55';
   const DotLine = ({id,dot,la,lb}) => (
     <g style={{cursor:'pointer'}} onMouseEnter={()=>setHover(id)} onMouseLeave={()=>setHover(null)} onClick={()=>setHover(hover===id?null:id)}>
       <line x1={la[0]} y1={la[1]} x2={lb[0]} y2={lb[1]} stroke={lc(id)} strokeWidth="1" strokeDasharray="4,3"/>
-      <circle cx={dot[0]} cy={dot[1]} r="4.5" fill={hover===id?'#FCD34D':'#ffffff30'} stroke={hover===id?'#FCD34D':'#ffffff50'} strokeWidth="1.5"/>
+      <circle cx={dot[0]} cy={dot[1]} r="4.5" fill={hover===id?'#FCD34D':'#ffffff28'} stroke={hover===id?'#FCD34D':'#ffffff44'} strokeWidth="1.5"/>
     </g>
   );
+
+  /*
+   Layout — person to the LEFT, desk+monitor to the RIGHT
+   ──────────────────────────────────────────────────────
+   ViewBox:     0 0 320 400
+   Floor:       y = 388
+   Chair seat:  y = 258–272   (x = 58–155)
+   Desk edge:   x = 116       (forearm rests ON desk to the right)
+   Desk surface:y = 194
+   Elbow:       (116, 192)
+   Forearm:     (116,192) → (165,192)  horizontal
+   Shoulder:    (110, 106)
+   Neck:        x = 88
+   Head:        cx=88, cy=76
+   Eye level:   y = 70        ← monitor top aligns here
+   Monitor:     x=186–282, y=70–142
+   
+   Torso depth (front-to-back): ~36px
+     back  x ≈ 68–72
+     front x ≈ 104–108   (always < desk edge x=116 → no overlap)
+  */
 
   return (
     <div style={{position:'relative'}}>
       <svg viewBox="0 0 320 400" style={{width:'100%',maxWidth:360,display:'block',margin:'0 auto'}}>
-        <defs>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="2" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
 
-        {/* ── FLOOR ── */}
-        <line x1="20" y1="388" x2="308" y2="388" stroke="#ffffff14" strokeWidth="1"/>
+        {/* FLOOR */}
+        <line x1="20" y1="388" x2="305" y2="388" stroke="#ffffff12" strokeWidth="1"/>
 
-        {/* ── CHAIR ── */}
+        {/* ── CHAIR ── drawn first (behind person) */}
         {/* Chair 5-star base */}
-        <ellipse cx="82" cy="386" rx="44" ry="5" fill="#1a1a2e" stroke="#ffffff12" strokeWidth="1"/>
-        {/* Chair column */}
-        <rect x="76" y="340" width="12" height="46" rx="4" fill="#1a1a2e" stroke="#ffffff12" strokeWidth="1"/>
-        {/* Chair seat */}
-        <path d="M 48 268 C 48 263 55 258 70 257 L 158 257 C 168 257 174 262 174 268 C 174 273 168 277 158 277 L 70 277 C 55 277 48 273 48 268Z" fill="#1e2040" stroke="#ffffff18" strokeWidth="1"/>
-        {/* Chair back */}
-        <path d="M 48 258 C 48 220 50 165 52 130 C 53 118 58 112 66 110 L 78 110 C 72 112 68 118 67 130 C 65 165 63 220 63 258Z" fill="#1e2040" stroke="#ffffff18" strokeWidth="1"/>
-        {/* Lumbar support bump */}
-        <path d="M 48 215 C 44 210 43 200 44 190 C 45 182 49 178 52 178 L 56 178 C 53 182 52 190 52 200 C 52 208 54 213 56 216Z" fill="#252545" stroke="#ffffff10" strokeWidth="1"/>
+        <ellipse cx="78" cy="386" rx="46" ry="6" fill="#1a1a2e" stroke="#ffffff14" strokeWidth="1"/>
+        {/* Gas cylinder */}
+        <rect x="72" y="338" width="12" height="50" rx="4" fill="#1a1a2e" stroke="#ffffff12" strokeWidth="1"/>
+        {/* Seat */}
+        <path d="M 50 258 C 50 252 58 248 72 248 L 156 248 C 166 248 172 252 172 258 C 172 265 166 270 156 270 L 72 270 C 58 270 50 265 50 258Z"
+          fill="#1e2244" stroke="#ffffff18" strokeWidth="1"/>
+        {/* Chair back (tall upright panel) */}
+        <path d="M 50 248 L 50 128 C 50 120 54 114 62 112 L 74 112 C 66 114 62 120 62 128 L 62 248Z"
+          fill="#1e2244" stroke="#ffffff18" strokeWidth="1"/>
+        {/* Lumbar support curve */}
+        <path d="M 50 205 C 44 198 43 185 45 174 C 47 165 51 160 55 160 L 59 160 C 55 164 53 172 52 182 C 51 192 53 200 56 207Z"
+          fill="#252550" stroke="#ffffff10" strokeWidth="1"/>
+        {/* Armrest stub */}
+        <rect x="50" y="145" width="10" height="28" rx="4" fill="#1e2244" stroke="#ffffff10" strokeWidth="1"/>
 
-        {/* ── DESK ── */}
-        {/* Desk surface */}
-        <rect x="82" y="196" width="220" height="10" rx="3" fill="#1e2040" stroke="#ffffff20" strokeWidth="1"/>
-        <rect x="84" y="197" width="216" height="3" rx="1" fill="#ffffff0c"/>
+        {/* ── DESK — starts at x=116 (elbow position), does NOT overlap torso */}
+        <rect x="116" y="194" width="192" height="9" rx="3" fill="#1e2244" stroke="#ffffff20" strokeWidth="1"/>
+        <rect x="118" y="195" width="188" height="3" rx="1" fill="#ffffff0c"/>
         {/* Desk right leg */}
-        <rect x="294" y="206" width="10" height="182" rx="3" fill="#1a1a2e" stroke="#ffffff10" strokeWidth="1"/>
+        <rect x="296" y="203" width="10" height="185" rx="3" fill="#1a1a2e" stroke="#ffffff10" strokeWidth="1"/>
 
-        {/* ── MONITOR ── */}
+        {/* ── KEYBOARD — on desk, right of elbow */}
+        <rect x="132" y="186" width="54" height="9" rx="3" fill="#0f0f20" stroke="#ffffff18" strokeWidth="1"/>
+        <rect x="134" y="188" width="50" height="5" rx="2" fill="#ffffff08"/>
+
+        {/* ── MONITOR — top at eye level y=70 */}
         {/* Stand base */}
-        <rect x="230" y="194" width="36" height="5" rx="2.5" fill="#1a1a2e" stroke="#ffffff15" strokeWidth="1"/>
+        <rect x="226" y="192" width="36" height="5" rx="2.5" fill="#1a1a2e" stroke="#ffffff15" strokeWidth="1"/>
         {/* Stand pole */}
-        <rect x="243" y="145" width="6" height="51" rx="3" fill="#1a1a2e" stroke="#ffffff12" strokeWidth="1"/>
-        {/* Screen — top EXACTLY at eye level y=50 */}
-        <rect x="196" y="50" width="96" height="72" rx="5" fill="#0a0a18" stroke="#6EE7B7" strokeWidth="1.5" filter="url(#glow)"/>
-        <rect x="200" y="54" width="88" height="64" rx="3" fill="#6EE7B710"/>
-        <rect x="206" y="63" width="50" height="3" rx="1.5" fill="#6EE7B748"/>
-        <rect x="206" y="71" width="68" height="2" rx="1" fill="#ffffff18"/>
-        <rect x="206" y="77" width="44" height="2" rx="1" fill="#ffffff12"/>
-        <rect x="206" y="83" width="58" height="2" rx="1" fill="#ffffff0e"/>
-        <rect x="206" y="89" width="36" height="2" rx="1" fill="#ffffff0a"/>
-        {/* Eye-level guide dashed line */}
-        <line x1="90" y1="50" x2="196" y2="50" stroke="#6EE7B730" strokeWidth="1" strokeDasharray="5,4"/>
+        <rect x="240" y="142" width="6" height="52" rx="3" fill="#1a1a2e" stroke="#ffffff12" strokeWidth="1"/>
+        {/* Screen — top at y=70 = eye level */}
+        <rect x="186" y="70" width="96" height="72" rx="5" fill="#080814" stroke="#6EE7B7" strokeWidth="2"/>
+        <rect x="190" y="74" width="88" height="64" rx="3" fill="#6EE7B70e"/>
+        <rect x="196" y="83"  width="52" height="3" rx="1.5" fill="#6EE7B745"/>
+        <rect x="196" y="91"  width="68" height="2" rx="1"   fill="#ffffff18"/>
+        <rect x="196" y="97"  width="46" height="2" rx="1"   fill="#ffffff12"/>
+        <rect x="196" y="103" width="60" height="2" rx="1"   fill="#ffffff0e"/>
+        <rect x="196" y="109" width="38" height="2" rx="1"   fill="#ffffff08"/>
+        {/* Eye-level guide */}
+        <line x1="96" y1="70" x2="186" y2="70" stroke="#6EE7B725" strokeWidth="1" strokeDasharray="5,4"/>
 
-        {/* ── KEYBOARD ── */}
-        <rect x="132" y="188" width="54" height="9" rx="3" fill="#0f0f20" stroke="#ffffff18" strokeWidth="1"/>
-        <rect x="134" y="190" width="50" height="5" rx="2" fill="#ffffff08"/>
+        {/* ══ FIGURE — narrow side-profile silhouette ══
+            Fill: #93C5FD at ~12%   Stroke: #93C5FD  strokeWidth=2
+            Torso front (x≈104-108) stays left of desk edge (x=116) */}
 
-        {/* ══════════════════════════════════════════
-            BODY SILHOUETTE — clean filled outline
-            Person facing RIGHT (viewing from their left side)
-            Body fill: #93C5FD at 12% + stroke #93C5FD
-        ══════════════════════════════════════════ */}
-
-        {/* HAIR BUN */}
-        <ellipse cx="75" cy="38" rx="15" ry="13" fill="#C4B5FD22" stroke="#C4B5FD" strokeWidth="1.5" strokeLinecap="round"/>
+        {/* HAIR BUN — behind head */}
+        <ellipse cx="74" cy="58" rx="14" ry="12"
+          fill="#C4B5FD18" stroke="#C4B5FD" strokeWidth="1.8"/>
 
         {/* HEAD */}
-        <ellipse cx="93" cy="58" rx="21" ry="25" fill="#93C5FD14" stroke="#93C5FD" strokeWidth="2"/>
+        <ellipse cx="88" cy="76" rx="19" ry="23"
+          fill="#93C5FD12" stroke="#93C5FD" strokeWidth="2"/>
 
         {/* NECK */}
-        <path d="M 88 81 L 88 100 L 98 100 L 98 81 Z" fill="#93C5FD14" stroke="#93C5FD" strokeWidth="1.5" strokeLinejoin="round"/>
+        <path d="M 83 97 L 83 110 L 93 110 L 93 97 Z"
+          fill="#93C5FD12" stroke="#93C5FD" strokeWidth="1.8" strokeLinejoin="round"/>
 
-        {/* TORSO — side profile with slight recline and female curves */}
+        {/* TORSO — narrow silhouette, slight recline
+            back x≈68, front x≈104-108, depth≈36px
+            Front stays < 116 so no overlap with desk */}
         <path d="
-          M 78 100
-          C 72 122 70 150 70 180
-          C 70 198 71 220 73 240
-          C 74 252 78 260 84 265
-          L 158 265
-          C 162 265 166 261 166 256
-          C 166 246 165 232 164 218
-          C 163 205 163 196 164 196
-          L 164 196
-          C 164 186 162 175 159 168
-          C 156 158 150 152 146 148
-          C 140 143 136 140 134 135
-          L 116 116
-          C 113 108 108 101 102 99
-          L 88 99
-          Z
+          M 68 110
+          C 64 134 62 162 64 196
+          C 65 218 67 240 70 258
+          C 72 264 79 270 90 270
+          C 102 270 108 264 108 256
+          C 107 244 106 228 106 214
+          C 106 202 106 192 107 182
+          C 108 168 108 150 107 134
+          C 106 122 108 110 108 110
+          L 68 110 Z
         " fill="#93C5FD10" stroke="#93C5FD" strokeWidth="2" strokeLinejoin="round"/>
 
-        {/* RIGHT UPPER ARM — nearly vertical */}
+        {/* RIGHT UPPER ARM — nearly vertical from shoulder to elbow at desk */}
         <path d="
-          M 116 108
-          C 120 128 124 155 125 192
-          L 132 192
-          C 132 156 129 129 126 108
-          Z
+          M 108 112 C 111 138 114 164 116 190
+          L 123 190 C 121 164 119 138 116 112 Z
         " fill="#93C5FD12" stroke="#93C5FD" strokeWidth="1.8"/>
 
-        {/* RIGHT FOREARM — horizontal on desk */}
+        {/* RIGHT FOREARM — horizontal on desk surface */}
         <path d="
-          M 125 192 C 125 197 126 200 127 200
-          L 176 200 C 177 200 178 197 178 193
-          L 132 192 Z
-        " fill="#93C5FD12" stroke="#93C5FD" strokeWidth="1.8"/>
+          M 116 190 L 116 198 L 166 198 L 166 190 Z
+        " rx="3" fill="#93C5FD12" stroke="#93C5FD" strokeWidth="1.8" strokeLinejoin="round"/>
 
         {/* HAND */}
-        <ellipse cx="180" cy="196" rx="7" ry="5" fill="#93C5FD12" stroke="#93C5FD" strokeWidth="1.5"/>
+        <ellipse cx="169" cy="194" rx="7" ry="5"
+          fill="#93C5FD12" stroke="#93C5FD" strokeWidth="1.5"/>
 
-        {/* LEFT UPPER ARM (visible behind torso) */}
-        <path d="M 78 100 C 74 120 70 148 69 168 L 76 169 C 77 150 80 122 83 100 Z" fill="#93C5FD10" stroke="#93C5FD" strokeWidth="1.5"/>
+        {/* LEFT UPPER ARM — hanging back */}
+        <path d="M 68 110 C 64 130 60 154 60 172 L 67 173 C 68 155 71 130 74 110 Z"
+          fill="#93C5FD10" stroke="#93C5FD" strokeWidth="1.5"/>
 
-        {/* THIGHS — near-horizontal, sitting on chair */}
+        {/* THIGHS — horizontal, from hip to knee
+            Drawn as a separate shape below the torso */}
         <path d="
-          M 76 265 C 76 278 170 279 172 266
-          C 172 259 76 258 76 265 Z
-        " fill="#93C5FD12" stroke="#93C5FD" strokeWidth="1.8"/>
+          M 72 266 C 72 278 170 278 172 266
+          C 172 260 72 260 72 266 Z
+        " fill="#93C5FD10" stroke="#93C5FD" strokeWidth="1.8"/>
 
-        {/* SHIN — vertical */}
-        <path d="
-          M 160 278 C 158 338 158 362 160 382
-          L 178 382 C 180 362 180 338 178 278 Z
-        " fill="#93C5FD12" stroke="#93C5FD" strokeWidth="1.8"/>
+        {/* SHIN — vertical, from knee down */}
+        <path d="M 159 276 C 157 340 157 365 159 384
+          L 177 384 C 179 365 179 340 177 276 Z"
+          fill="#93C5FD10" stroke="#93C5FD" strokeWidth="1.8"/>
 
         {/* FOOT */}
-        <path d="
-          M 157 380 C 156 385 157 390 160 390
-          L 197 390 C 200 390 202 387 200 383
-          L 178 382 Z
-        " fill="#93C5FD12" stroke="#93C5FD" strokeWidth="1.8"/>
+        <path d="M 156 382 C 155 388 157 392 160 392
+          L 196 392 C 200 392 202 389 200 384 L 177 384 Z"
+          fill="#93C5FD10" stroke="#93C5FD" strokeWidth="1.8"/>
 
-        {/* ── ANGLE ARCS ── */}
-        <path d="M 117 196 A 13 13 0 0 1 128 183" stroke="#FCD34D55" strokeWidth="1.5" fill="none"/>
-        <text x="130" y="182" fontSize="7.5" fill="#FCD34D99" fontFamily="system-ui" fontWeight="600">90–120°</text>
+        {/* ── ANGLE LABELS ── */}
+        <path d="M 108 195 A 13 13 0 0 1 120 182" stroke="#FCD34D66" strokeWidth="1.5" fill="none"/>
+        <text x="123" y="181" fontSize="8" fill="#FCD34Dcc" fontFamily="system-ui" fontWeight="700">90–120°</text>
 
-        <path d="M 108 265 A 14 14 0 0 1 94 252" stroke="#FCD34D55" strokeWidth="1.5" fill="none"/>
-        <text x="110" y="252" fontSize="7.5" fill="#FCD34D99" fontFamily="system-ui" fontWeight="600">90–120°</text>
+        <path d="M 106 261 A 14 14 0 0 1 93 249" stroke="#FCD34D66" strokeWidth="1.5" fill="none"/>
+        <text x="108" y="249" fontSize="8" fill="#FCD34Dcc" fontFamily="system-ui" fontWeight="700">90–120°</text>
 
         {/* ── INTERACTIVE ANNOTATION DOTS ── */}
-        {/* Left side */}
-        <DotLine id="head"      dot={[44,58]}  la={[44,58]}  lb={[72,58]}/>
-        <DotLine id="shoulders" dot={[44,100]} la={[44,100]} lb={[78,100]}/>
-        <DotLine id="back"      dot={[44,175]} la={[44,175]} lb={[70,175]}/>
-        <DotLine id="hips"      dot={[44,265]} la={[44,265]} lb={[76,265]}/>
-        <DotLine id="feet"      dot={[44,385]} la={[44,385]} lb={[157,385]}/>
-        {/* Right side */}
-        <DotLine id="monitor"   dot={[304,50]}  la={[304,50]}  lb={[292,50]}/>
-        <DotLine id="arms"      dot={[304,196]} la={[304,196]} lb={[185,196]}/>
+        <DotLine id="head"      dot={[40,76]}  la={[40,76]}  lb={[69,76]}/>
+        <DotLine id="shoulders" dot={[40,110]} la={[40,110]} lb={[68,110]}/>
+        <DotLine id="back"      dot={[40,175]} la={[40,175]} lb={[64,175]}/>
+        <DotLine id="hips"      dot={[40,263]} la={[40,263]} lb={[72,263]}/>
+        <DotLine id="feet"      dot={[40,386]} la={[40,386]} lb={[156,386]}/>
+        <DotLine id="monitor"   dot={[296,106]} la={[296,106]} lb={[282,106]}/>
+        <DotLine id="arms"      dot={[296,194]} la={[296,194]} lb={[176,194]}/>
 
-        {/* ── TEXT LABELS ── */}
+        {/* ── LABELS ── */}
         {[
-          {id:'head',      x:6,   y:62,  a:'start', t:'Head'},
-          {id:'shoulders', x:6,   y:104, a:'start', t:'Shoulders'},
+          {id:'head',      x:6,   y:80,  a:'start', t:'Head'},
+          {id:'shoulders', x:6,   y:114, a:'start', t:'Shoulders'},
           {id:'back',      x:6,   y:179, a:'start', t:'Back'},
-          {id:'hips',      x:6,   y:269, a:'start', t:'Hips'},
-          {id:'feet',      x:6,   y:389, a:'start', t:'Feet'},
-          {id:'monitor',   x:314, y:54,  a:'start', t:'Monitor'},
-          {id:'arms',      x:314, y:200, a:'start', t:'Arms'},
+          {id:'hips',      x:6,   y:267, a:'start', t:'Hips'},
+          {id:'feet',      x:6,   y:390, a:'start', t:'Feet'},
+          {id:'monitor',   x:304, y:110, a:'start', t:'Monitor'},
+          {id:'arms',      x:304, y:198, a:'start', t:'Arms'},
         ].map(({id,x,y,a,t})=>(
           <text key={id} x={x} y={y} fontSize="8.5" textAnchor={a}
             fill={hover===id?'#FCD34D':tc(id)} fontWeight={hover===id?'700':'400'}
@@ -547,6 +556,7 @@ const PostureDiagram = () => {
     </div>
   );
 };
+
 
 const CHECKLIST = [
   { icon:'✅', text:'Monitor top at eye level, 50–70cm away' },

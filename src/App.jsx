@@ -2115,7 +2115,7 @@ export default function App({ session }) {
       <div style={{padding:"13px 13px 0",position:"sticky",top:0,zIndex:40,background:`linear-gradient(to bottom,${th.bg} 85%,transparent)`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
           <div>
-            <div style={{fontWeight:800,fontSize:21,background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:-.5}}>VIBE<span style={{WebkitTextFillColor:th.tx}}>FIT</span></div>
+            <div style={{fontWeight:800,fontSize:21,background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:-.5}}>WELLCREW</div>
             <div style={{fontSize:9,color:th.sub,marginTop:1}}>Company Wellness Hub</div>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>

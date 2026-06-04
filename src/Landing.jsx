@@ -14,7 +14,7 @@ export default function Landing({ onSignup, onLogin }) {
       {/* Nav */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid #ffffff08' }}>
         <div style={{ fontWeight: 800, fontSize: 20, background: 'linear-gradient(90deg,#6EE7B7,#93C5FD)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          VIBE<span style={{ WebkitTextFillColor: '#e8e8f0' }}>FIT</span>
+          WELLCREW
         </div>
         <button onClick={onLogin} style={{ background: 'transparent', border: '1px solid #ffffff20', color: '#e8e8f0', borderRadius: 9, padding: '7px 18px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
           Sign In

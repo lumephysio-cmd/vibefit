@@ -844,9 +844,159 @@ const BadgesGrid=({badges,cu})=>{
   );
 };
 
+// ── SYMPTOM LOG ──
+const BODY_AREAS=[["Neck","🤔"],["Upper back","🔝"],["Lower back","😣"],["Shoulders","🏋️"],["Wrists / hands","✋"],["Hips","🦵"],["Knees","🦿"],["Eyes / head","👁️"],["Chest","💗"],["Other","📍"]];
+const PAIN_TYPES=[["Aching","〰️"],["Sharp / stabbing","⚡"],["Burning","🔥"],["Stiffness","🧊"],["Tingling / numb","🔌"],["Pressure","🫷"],["Throbbing","💓"],["Fatigue","😮‍💨"]];
+const ACTIVITIES=[["Sitting at desk","💻"],["Typing / mousing","⌨️"],["Video calls","📹"],["After exercise","🏃"],["Woke up with it","😴"],["Walking / standing","🚶"],["Lifting","📦"],["No clear cause","❓"]];
+const DURATIONS=[["< 30 mins","⚡"],["A few hours","⏳"],["All day","🌙"],["Comes & goes","🔄"],["Constant","📍"]];
+const TOD_OPTS=[["Morning","🌅"],["Mid-morning","☀️"],["Midday","🕛"],["Afternoon","🌤️"],["Evening","🌙"]];
+
+const SymptomLogSection=({cu,notify})=>{
+  const [logs,setLogs]=useState([]);
+  const [open,setOpen]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const autoTod=()=>{const h=new Date().getHours();return h<10?"Morning":h<12?"Mid-morning":h<14?"Midday":h<17?"Afternoon":"Evening";};
+  const blank=()=>({body_area:"",pain_type:"",intensity:5,time_of_day:autoTod(),activity:"",duration:"",notes:""});
+  const [f,setF]=useState(blank);
+  const set=k=>v=>setF(p=>({...p,[k]:v}));
+
+  useEffect(()=>{
+    supabase.from('symptom_logs').select('*').eq('user_id',cu.id)
+      .order('created_at',{ascending:false}).limit(15)
+      .then(({data})=>{if(data)setLogs(data);});
+  },[cu.id]);
+
+  const submit=async()=>{
+    if(!f.body_area||!f.pain_type){notify("Please select a body area and pain type.");return;}
+    setSaving(true);
+    const{data,error}=await supabase.from('symptom_logs')
+      .insert({user_id:cu.id,company_id:cu.company_id,...f})
+      .select().single();
+    setSaving(false);
+    if(!error&&data){
+      setLogs(p=>[data,...p]);
+      setOpen(false);setF(blank());
+      notify("✅ Symptom logged — Physio Brooke will review");
+    }
+  };
+
+  const intCol=i=>i<=3?"#6EE7B7":i<=6?"#FCD34D":i<=8?"#FB923C":"#F87171";
+  const Pill=({opts,val,onPick,col="#6EE7B7"})=>(
+    <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+      {opts.map(([label,icon])=>{const sel=val===label;return(
+        <button key={label} onClick={()=>onPick(sel?'':label)} style={{padding:"6px 10px",borderRadius:20,border:`1px solid ${sel?col+"66":"#ffffff18"}`,background:sel?col+"18":"transparent",color:sel?col:"#888",fontSize:11,fontWeight:sel?700:400,display:"flex",gap:4,alignItems:"center"}}>
+          <span>{icon}</span>{label}
+        </button>
+      );})}
+    </div>
+  );
+
+  const dateStr=d=>{const dt=new Date(d);return dt.toLocaleDateString("en-AU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});};
+
+  return(
+    <div className="card" style={{marginBottom:9}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:open?14:0}}>
+        <div style={{fontWeight:700,fontSize:13}}>🩺 Symptom Log</div>
+        <button onClick={()=>{setOpen(o=>!o);setF(blank());}} style={{background:open?"#ffffff10":"#F9A8D420",border:`1px solid ${open?"#ffffff18":"#F9A8D444"}`,color:open?"#888":"#F9A8D4",borderRadius:20,padding:"5px 12px",fontSize:11,fontWeight:700}}>
+          {open?"✕ Cancel":"+ Log Symptom"}
+        </button>
+      </div>
+
+      {open&&<div>
+        {/* WHERE */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:11,color:"#aaa",fontWeight:700,marginBottom:7}}>📍 Where does it hurt?</div>
+          <Pill opts={BODY_AREAS} val={f.body_area} onPick={set("body_area")} col="#F9A8D4"/>
+        </div>
+
+        {/* PAIN TYPE */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:11,color:"#aaa",fontWeight:700,marginBottom:7}}>💬 What type of pain?</div>
+          <Pill opts={PAIN_TYPES} val={f.pain_type} onPick={set("pain_type")} col="#FCD34D"/>
+        </div>
+
+        {/* INTENSITY */}
+        <div style={{marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:7}}>
+            <div style={{fontSize:11,color:"#aaa",fontWeight:700}}>📊 Pain intensity</div>
+            <div style={{fontSize:11,fontWeight:800,color:intCol(f.intensity)}}>{f.intensity}/10</div>
+          </div>
+          <div style={{display:"flex",gap:3}}>
+            {[1,2,3,4,5,6,7,8,9,10].map(n=>(
+              <button key={n} onClick={()=>set("intensity")(n)} style={{flex:1,padding:"7px 0",borderRadius:7,border:`1px solid ${f.intensity===n?intCol(n)+"66":"#ffffff12"}`,background:f.intensity===n?intCol(n)+"22":"transparent",color:f.intensity===n?intCol(n):"#555",fontSize:11,fontWeight:700}}>
+                {n}
+              </button>
+            ))}
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}>
+            <span style={{fontSize:9,color:"#555"}}>Mild</span>
+            <span style={{fontSize:9,color:"#555"}}>Moderate</span>
+            <span style={{fontSize:9,color:"#555"}}>Severe</span>
+          </div>
+        </div>
+
+        {/* TIME OF DAY */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:11,color:"#aaa",fontWeight:700,marginBottom:7}}>🕐 Time of day</div>
+          <Pill opts={TOD_OPTS} val={f.time_of_day} onPick={set("time_of_day")} col="#93C5FD"/>
+        </div>
+
+        {/* ACTIVITY */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:11,color:"#aaa",fontWeight:700,marginBottom:7}}>⚡ What were you doing?</div>
+          <Pill opts={ACTIVITIES} val={f.activity} onPick={set("activity")} col="#6EE7B7"/>
+        </div>
+
+        {/* DURATION */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:11,color:"#aaa",fontWeight:700,marginBottom:7}}>⏱ How long has it lasted?</div>
+          <Pill opts={DURATIONS} val={f.duration} onPick={set("duration")} col="#C4B5FD"/>
+        </div>
+
+        {/* NOTES */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:11,color:"#aaa",fontWeight:700,marginBottom:7}}>📝 Anything else to note? <span style={{fontWeight:400,color:"#555"}}>(optional)</span></div>
+          <textarea value={f.notes} onChange={e=>set("notes")(e.target.value)} placeholder="e.g. worse when I look down, started after a long call…" rows={2} style={{resize:"none",width:"100%",fontSize:12}}/>
+        </div>
+
+        {/* SUBMIT */}
+        <div style={{background:"#F9A8D408",border:"1px solid #F9A8D420",borderRadius:10,padding:"8px 12px",marginBottom:12,fontSize:11,color:"#888"}}>
+          🔒 This log is private. Only you and Physio Brooke can see it.
+        </div>
+        <button onClick={submit} disabled={saving||!f.body_area||!f.pain_type} style={{width:"100%",padding:"12px",borderRadius:11,border:"none",background:f.body_area&&f.pain_type?"linear-gradient(135deg,#F9A8D4,#C4B5FD)":"#ffffff10",color:f.body_area&&f.pain_type?"#080810":"#555",fontWeight:800,fontSize:14,opacity:saving?0.6:1}}>
+          {saving?"Saving…":"Submit to Physio Brooke →"}
+        </button>
+      </div>}
+
+      {/* PAST LOGS */}
+      {!open&&logs.length===0&&(
+        <div style={{textAlign:"center",padding:"20px 0",color:"#555",fontSize:12}}>
+          <div style={{fontSize:28,marginBottom:6}}>🩺</div>
+          No symptoms logged yet. Use the button above to log pain or discomfort.
+        </div>
+      )}
+      {!open&&logs.length>0&&(
+        <div style={{marginTop:10}}>
+          {logs.map((l,i)=>(
+            <div key={l.id} style={{display:"flex",gap:10,alignItems:"flex-start",paddingBottom:10,marginBottom:10,borderBottom:i<logs.length-1?"1px solid #ffffff08":"none"}}>
+              <div style={{width:36,height:36,borderRadius:10,background:intCol(l.intensity)+"18",border:`1px solid ${intCol(l.intensity)}33`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:13,color:intCol(l.intensity),flexShrink:0}}>{l.intensity}</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:12,marginBottom:2}}>{l.body_area} · {l.pain_type}</div>
+                <div style={{fontSize:11,color:"#666"}}>{[l.time_of_day,l.activity,l.duration].filter(Boolean).join(" · ")}</div>
+                {l.notes&&<div style={{fontSize:11,color:"#555",fontStyle:"italic",marginTop:2}}>"{l.notes}"</div>}
+                <div style={{fontSize:10,color:"#444",marginTop:2}}>{dateStr(l.created_at)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── PROFILE TAB ──
-const ProfileTab=({cu,lb,pd,setPd,notify,checked,onCheckin,lastCheckin,badges,awardBadge})=>{const [nm,setNm]=useState(3);const [nn,setNn]=useState("");const myLB=lb.find(e=>e.uid===cu.id);const myR=lb.findIndex(e=>e.uid===cu.id)+1;
-const save=()=>{const today=new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"});setPd(p=>({...p,mood:[...p.mood.slice(-6),{date:today,val:nm}]}));if(nn.trim())setPd(p=>({...p,notes:[...p.notes,nn]}));setNn("");setNm(3);notify("🔒 Saved!");};
+const ProfileTab=({cu,lb,pd,setPd,notify,checked,onCheckin,lastCheckin,badges,awardBadge})=>{const [nm,setNm]=useState(3);const myLB=lb.find(e=>e.uid===cu.id);const myR=lb.findIndex(e=>e.uid===cu.id)+1;
+const save=()=>{const today=new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"});setPd(p=>({...p,mood:[...p.mood.slice(-6),{date:today,val:nm}]}));setNm(3);notify("🔒 Saved!");};
 return<div>
   {/* 🔒 Private daily check-in — only you see this */}
   {!checked&&<CheckIn onDone={onCheckin}/>}
@@ -856,8 +1006,8 @@ return<div>
 <div style={{display:"flex",gap:7,marginBottom:10}}>{[["#"+(myR||"–"),"Rank","#6EE7B7"],[(cu.checkin_streak||0)+"🔥","Streak","#FCD34D"],[(myLB?.pts||0).toLocaleString(),"Points","#93C5FD"]].map(([v,l,c])=><div key={l} className="card" style={{flex:1,textAlign:"center",padding:12}}><div style={{fontWeight:800,fontSize:16,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}</div>
 <ReadinessHistoryCard cu={cu}/>
 <BadgesGrid badges={badges||[]} cu={cu}/><div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>😊 Mood</div><div style={{fontSize:12,color:"#F9A8D4",fontWeight:700}}>{pd.mood[pd.mood.length-1]?.val}/5</div></div><Spk sid="md" data={pd.mood} color="#F9A8D4"/></div>
-<div className="card" style={{marginBottom:9}}><div style={{fontWeight:700,fontSize:13,marginBottom:8}}>📓 Journal</div>{pd.notes.map((n,i)=><div key={i} style={{fontSize:12,color:"#888",borderLeft:"2px solid #ffffff10",paddingLeft:7,marginBottom:5}}>{n}</div>)}</div>
-<div className="card"><div style={{fontWeight:700,marginBottom:12}}>Log Today</div><div style={{fontSize:11,color:"#888",marginBottom:6}}>Mood: <span style={{color:"#F9A8D4",fontWeight:700}}>{["😔","😕","😐","🙂","😄"][nm-1]}</span></div><div style={{display:"flex",gap:4,marginBottom:9}}>{[1,2,3,4,5].map(v=><button key={v} onClick={()=>setNm(v)} style={{flex:1,padding:"6px 0",borderRadius:9,border:`1px solid ${nm===v?"#F9A8D455":"#ffffff15"}`,background:nm===v?"#F9A8D420":"transparent",fontSize:15}}>{["😔","😕","😐","🙂","😄"][v-1]}</button>)}</div><textarea placeholder="Journal note…" rows={2} value={nn} onChange={e=>setNn(e.target.value)} style={{resize:"none",marginBottom:9}}/><button onClick={save} style={{width:"100%",background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",border:"1px solid #6EE7B755",color:"#6EE7B7",padding:"11px",borderRadius:11,fontWeight:700}}>🔒 Save Privately</button></div>
+<SymptomLogSection cu={cu} notify={notify}/>
+<div className="card"><div style={{fontWeight:700,marginBottom:12}}>Log Mood</div><div style={{fontSize:11,color:"#888",marginBottom:6}}>Today's mood: <span style={{color:"#F9A8D4",fontWeight:700}}>{["😔","😕","😐","🙂","😄"][nm-1]}</span></div><div style={{display:"flex",gap:4,marginBottom:12}}>{[1,2,3,4,5].map(v=><button key={v} onClick={()=>setNm(v)} style={{flex:1,padding:"6px 0",borderRadius:9,border:`1px solid ${nm===v?"#F9A8D455":"#ffffff15"}`,background:nm===v?"#F9A8D420":"transparent",fontSize:15}}>{["😔","😕","😐","🙂","😄"][v-1]}</button>)}</div><button onClick={save} style={{width:"100%",background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",border:"1px solid #6EE7B755",color:"#6EE7B7",padding:"11px",borderRadius:11,fontWeight:700}}>🔒 Save Privately</button></div>
 </div>;};
 
 // ── ADMIN TAB ──

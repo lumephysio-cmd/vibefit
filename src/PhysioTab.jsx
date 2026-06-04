@@ -351,131 +351,129 @@ const PostureDiagram = () => {
     monitor:'Monitor top at eye level. Screen 50–70cm from face (arm\'s length). Slight downward gaze of 10–20° is natural.',
     head:'Head sits directly over shoulders — no forward jut. Every 2.5cm of forward head posture adds ~5kg of load to the cervical spine.',
     shoulders:'Shoulders relaxed and down, not hunched. Shoulder blades gently drawn toward spine. Elbows close to your body.',
-    arms:'Elbows at ~90° or slightly more open. Forearms parallel to the floor or slightly downward. Wrists flat — no upward or downward bend.',
+    arms:'Elbows at ~90° or slightly more open. Forearms resting flat on the desk or armrests. Wrists neutral — not bent up or down.',
     back:'Lumbar curve supported. Back angle 100–110° — slight recline, not fully upright. This reduces disc pressure compared to 90° sitting.',
     hips:'Hips at ~90° or slightly open (>90°). Weight evenly on both sit bones. Avoid crossing legs — it rotates the pelvis unevenly.',
     feet:'Feet flat on the floor. If feet don\'t reach, use a footrest. Knees approximately level with or slightly below hips.',
   };
-  const c = (id) => hover===id ? '#FCD34D' : '#ffffff40';
-  const lc = (id) => hover===id ? '#FCD34D' : '#ffffff20';
+  const c  = id => hover===id ? '#FCD34D' : '#ffffff40';
+  const lc = id => hover===id ? '#FCD34D' : '#ffffff20';
+  const dot = (id, cx, cy, x1, y1, x2, y2) => (
+    <g key={id}>
+      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={lc(id)} strokeWidth="1" strokeDasharray="3,2"/>
+      <circle cx={cx} cy={cy} r="4" fill={c(id)} style={{cursor:'pointer'}}
+        onMouseEnter={()=>setHover(id)} onMouseLeave={()=>setHover(null)}
+        onClick={()=>setHover(hover===id?null:id)}/>
+    </g>
+  );
 
   return (
     <div style={{position:'relative'}}>
-      <svg viewBox="0 0 320 380" style={{width:'100%',maxWidth:340,display:'block',margin:'0 auto'}}>
-        {/* ── DESK ── */}
-        <rect x="80" y="192" width="200" height="9" rx="3" fill="#2a2a3e" stroke="#ffffff18" strokeWidth="1"/>
-        <rect x="254" y="201" width="8" height="120" rx="3" fill="#2a2a3e"/>
-        {/* desk surface shine */}
-        <rect x="82" y="192" width="196" height="2" rx="1" fill="#ffffff08"/>
+      <svg viewBox="0 0 340 410" style={{width:'100%',maxWidth:340,display:'block',margin:'0 auto'}}>
 
-        {/* ── MONITOR ── */}
-        <rect x="170" y="115" width="90" height="58" rx="5" fill="#0d0d1a" stroke="#6EE7B755" strokeWidth="1.5"/>
-        {/* screen glow */}
-        <rect x="174" y="119" width="82" height="50" rx="3" fill="#6EE7B710"/>
-        <line x1="210" y1="115" x2="210" y2="192" stroke="#ffffff20" strokeWidth="2"/>
-        <rect x="196" y="187" width="28" height="6" rx="2" fill="#2a2a3e"/>
-        {/* Monitor label zone */}
-        <line x1="170" y1="131" x2="120" y2="131" stroke={lc('monitor')} strokeWidth="1" strokeDasharray="3,2"/>
-        <circle cx="120" cy="131" r="3" fill={c('monitor')}
-          style={{cursor:'pointer'}} onMouseEnter={()=>setHover('monitor')} onMouseLeave={()=>setHover(null)}
-          onClick={()=>setHover(hover==='monitor'?null:'monitor')}/>
+        {/* ── DESK ── */}
+        <rect x="55" y="218" width="260" height="9" rx="3" fill="#2a2a3e" stroke="#ffffff18" strokeWidth="1"/>
+        <rect x="57" y="218" width="256" height="2" rx="1" fill="#ffffff08"/>
+        {/* Desk leg (right) */}
+        <rect x="292" y="227" width="8" height="130" rx="3" fill="#2a2a3e"/>
+
+        {/* ── CHAIR ── */}
+        {/* Chair back (behind torso) */}
+        <path d="M 72 128 Q 66 172 68 220" stroke="#ffffff14" strokeWidth="14" fill="none" strokeLinecap="round"/>
+        {/* Chair seat */}
+        <rect x="62" y="224" width="72" height="10" rx="5" fill="#ffffff15"/>
+
+        {/* ── MONITOR (clearly right of person, on desk) ── */}
+        {/* Stand */}
+        <line x1="230" y1="218" x2="230" y2="155" stroke="#ffffff20" strokeWidth="3" strokeLinecap="round"/>
+        <rect x="214" y="214" width="32" height="6" rx="3" fill="#2a2a3e" stroke="#ffffff15" strokeWidth="1"/>
+        {/* Screen */}
+        <rect x="188" y="100" width="100" height="68" rx="6" fill="#0d0d1a" stroke="#6EE7B766" strokeWidth="1.5"/>
+        <rect x="192" y="104" width="92" height="60" rx="4" fill="#6EE7B712"/>
+        {/* Fake screen content lines */}
+        <rect x="198" y="112" width="60" height="3" rx="1" fill="#6EE7B730"/>
+        <rect x="198" y="120" width="75" height="2" rx="1" fill="#ffffff15"/>
+        <rect x="198" y="126" width="50" height="2" rx="1" fill="#ffffff10"/>
+
+        {/* ── KEYBOARD (on desk, between person and monitor) ── */}
+        <rect x="120" y="211" width="58" height="9" rx="3" fill="#1a1a2e" stroke="#ffffff18" strokeWidth="1"/>
+        <rect x="122" y="213" width="54" height="5" rx="2" fill="#ffffff08"/>
 
         {/* ── PERSON ── */}
         {/* Head */}
-        <circle cx="108" cy="82" r="17" fill="#1e1e2e" stroke="#C4B5FD66" strokeWidth="2"/>
-        <circle cx="108" cy="82" r="15" fill="#C4B5FD18"/>
-        <text x="108" y="87" textAnchor="middle" fontSize="16">🧑</text>
-        {/* Head tap zone */}
-        <circle cx="75" cy="82" r="4" fill={c('head')} style={{cursor:'pointer'}}
-          onMouseEnter={()=>setHover('head')} onMouseLeave={()=>setHover(null)}
-          onClick={()=>setHover(hover==='head'?null:'head')}/>
-        <line x1="79" y1="82" x2="92" y2="82" stroke={lc('head')} strokeWidth="1" strokeDasharray="3,2"/>
+        <circle cx="98" cy="74" r="19" fill="#1e1e2e" stroke="#C4B5FD66" strokeWidth="2"/>
+        <circle cx="98" cy="74" r="17" fill="#C4B5FD18"/>
+        <text x="98" y="80" textAnchor="middle" fontSize="18">🧑</text>
 
         {/* Neck */}
-        <line x1="108" y1="99" x2="108" y2="114" stroke="#C4B5FD" strokeWidth="4" strokeLinecap="round"/>
+        <line x1="98" y1="93" x2="98" y2="110" stroke="#C4B5FD" strokeWidth="4" strokeLinecap="round"/>
 
         {/* Shoulders */}
-        <path d="M 90 114 Q 108 118 125 114" stroke="#93C5FD" strokeWidth="4" fill="none" strokeLinecap="round"/>
-        <circle cx="75" cy="114" r="4" fill={c('shoulders')} style={{cursor:'pointer'}}
-          onMouseEnter={()=>setHover('shoulders')} onMouseLeave={()=>setHover(null)}
-          onClick={()=>setHover(hover==='shoulders'?null:'shoulders')}/>
-        <line x1="79" y1="114" x2="90" y2="114" stroke={lc('shoulders')} strokeWidth="1" strokeDasharray="3,2"/>
+        <path d="M 78 110 Q 98 115 118 110" stroke="#93C5FD" strokeWidth="4" fill="none" strokeLinecap="round"/>
 
-        {/* Upper arms */}
-        <line x1="125" y1="114" x2="148" y2="148" stroke="#93C5FD" strokeWidth="4" strokeLinecap="round"/>
-        <line x1="90" y1="114" x2="78" y2="145" stroke="#93C5FD" strokeWidth="4" strokeLinecap="round"/>
+        {/* Torso — slight recline 100-110° */}
+        <path d="M 98 110 Q 92 158 90 222" stroke="#6EE7B7" strokeWidth="5" fill="none" strokeLinecap="round"/>
+        {/* Lumbar highlight */}
+        <path d="M 90 178 Q 85 198 90 222" stroke="#6EE7B755" strokeWidth="9" fill="none" strokeLinecap="round"/>
 
-        {/* Forearms / on desk */}
-        <line x1="148" y1="148" x2="185" y2="192" stroke="#93C5FD" strokeWidth="3.5" strokeLinecap="round"/>
-        <circle cx="270" cy="160" r="4" fill={c('arms')} style={{cursor:'pointer'}}
-          onMouseEnter={()=>setHover('arms')} onMouseLeave={()=>setHover(null)}
-          onClick={()=>setHover(hover==='arms'?null:'arms')}/>
-        <line x1="266" y1="160" x2="190" y2="185" stroke={lc('arms')} strokeWidth="1" strokeDasharray="3,2"/>
+        {/* Right upper arm (goes down toward elbow at desk height) */}
+        <line x1="118" y1="110" x2="140" y2="158" stroke="#93C5FD" strokeWidth="4" strokeLinecap="round"/>
+        {/* Right forearm — flat along desk surface */}
+        <line x1="140" y1="158" x2="178" y2="212" stroke="#93C5FD" strokeWidth="3.5" strokeLinecap="round"/>
 
-        {/* Torso — slight recline (lumbar curve) */}
-        <path d="M 108 114 Q 102 158 100 202" stroke="#6EE7B7" strokeWidth="5" fill="none" strokeLinecap="round"/>
-        {/* Lumbar curve highlight */}
-        <path d="M 100 165 Q 95 180 100 202" stroke="#6EE7B755" strokeWidth="8" fill="none" strokeLinecap="round"/>
-        <circle cx="270" cy="195" r="4" fill={c('back')} style={{cursor:'pointer'}}
-          onMouseEnter={()=>setHover('back')} onMouseLeave={()=>setHover(null)}
-          onClick={()=>setHover(hover==='back'?null:'back')}/>
-        <line x1="266" y1="195" x2="108" y2="178" stroke={lc('back')} strokeWidth="1" strokeDasharray="3,2"/>
-
-        {/* Chair back */}
-        <path d="M 86 120 Q 80 162 82 205" stroke="#ffffff15" strokeWidth="12" fill="none" strokeLinecap="round"/>
+        {/* Left upper arm */}
+        <line x1="78" y1="110" x2="70" y2="155" stroke="#93C5FD" strokeWidth="3.5" strokeLinecap="round"/>
 
         {/* Hip */}
-        <ellipse cx="105" cy="207" rx="18" ry="8" fill="#6EE7B730"/>
-        <circle cx="75" cy="207" r="4" fill={c('hips')} style={{cursor:'pointer'}}
-          onMouseEnter={()=>setHover('hips')} onMouseLeave={()=>setHover(null)}
-          onClick={()=>setHover(hover==='hips'?null:'hips')}/>
-        <line x1="79" y1="207" x2="90" y2="207" stroke={lc('hips')} strokeWidth="1" strokeDasharray="3,2"/>
-
-        {/* Chair seat */}
-        <rect x="75" y="210" width="68" height="10" rx="4" fill="#ffffff15"/>
+        <ellipse cx="94" cy="226" rx="20" ry="8" fill="#6EE7B730"/>
 
         {/* Thighs — roughly horizontal */}
-        <line x1="105" y1="207" x2="150" y2="218" stroke="#6EE7B7" strokeWidth="4.5" strokeLinecap="round"/>
+        <line x1="94" y1="226" x2="148" y2="236" stroke="#6EE7B7" strokeWidth="4.5" strokeLinecap="round"/>
 
-        {/* Knees */}
-        <circle cx="152" cy="220" r="5" fill="#6EE7B740"/>
+        {/* Knee */}
+        <circle cx="150" cy="238" r="5" fill="#6EE7B745"/>
 
-        {/* Shins — vertical */}
-        <line x1="152" y1="225" x2="152" y2="310" stroke="#6EE7B7" strokeWidth="4" strokeLinecap="round"/>
+        {/* Shin — vertical */}
+        <line x1="150" y1="243" x2="150" y2="340" stroke="#6EE7B7" strokeWidth="4" strokeLinecap="round"/>
 
         {/* Floor */}
-        <line x1="50" y1="318" x2="290" y2="318" stroke="#ffffff12" strokeWidth="1.5"/>
+        <line x1="40" y1="348" x2="318" y2="348" stroke="#ffffff12" strokeWidth="1.5"/>
 
-        {/* Feet flat on floor */}
-        <line x1="132" y1="310" x2="170" y2="310" stroke="#6EE7B7" strokeWidth="4" strokeLinecap="round"/>
-        <circle cx="270" cy="305" r="4" fill={c('feet')} style={{cursor:'pointer'}}
-          onMouseEnter={()=>setHover('feet')} onMouseLeave={()=>setHover(null)}
-          onClick={()=>setHover(hover==='feet'?null:'feet')}/>
-        <line x1="266" y1="305" x2="172" y2="310" stroke={lc('feet')} strokeWidth="1" strokeDasharray="3,2"/>
+        {/* Foot */}
+        <line x1="130" y1="340" x2="172" y2="340" stroke="#6EE7B7" strokeWidth="4" strokeLinecap="round"/>
+
+        {/* ── INTERACTIVE DOTS (left side = head/shoulders/hips, right side = monitor/arms/back/feet) ── */}
+        {dot('head',      62,  74,  62,  74,  80,  74)}
+        {dot('shoulders', 62, 110,  62, 110,  78, 110)}
+        {dot('hips',      62, 226,  62, 226,  76, 226)}
+        {dot('monitor',  300, 126, 286, 126, 288, 126)}
+        {dot('arms',     300, 212, 286, 212, 180, 213)}
+        {dot('back',     300, 185, 286, 185, 100, 175)}
+        {dot('feet',     300, 338, 286, 338, 174, 340)}
 
         {/* ── ANGLE ARCS ── */}
         {/* Elbow ~90° */}
-        <path d="M 138 152 A 10 10 0 0 1 150 143" stroke="#93C5FD55" strokeWidth="1.5" fill="none"/>
-        <text x="152" y="148" fontSize="7" fill="#93C5FD88">~90°</text>
-        {/* Hip ~90–100° */}
-        <path d="M 118 208 A 14 14 0 0 1 108 194" stroke="#6EE7B755" strokeWidth="1.5" fill="none"/>
-        <text x="120" y="194" fontSize="7" fill="#6EE7B788">~90°</text>
+        <path d="M 130 162 A 10 10 0 0 1 143 153" stroke="#93C5FD55" strokeWidth="1.5" fill="none"/>
+        <text x="143" y="151" fontSize="7" fill="#93C5FD99">~90°</text>
+        {/* Hip ~100° */}
+        <path d="M 108 227 A 14 14 0 0 1 96 213" stroke="#6EE7B755" strokeWidth="1.5" fill="none"/>
+        <text x="110" y="214" fontSize="7" fill="#6EE7B799">~100°</text>
         {/* Knee ~90° */}
-        <path d="M 155 230 A 10 10 0 0 1 162 220" stroke="#6EE7B755" strokeWidth="1.5" fill="none"/>
-        <text x="160" y="232" fontSize="7" fill="#6EE7B788">~90°</text>
+        <path d="M 153 250 A 10 10 0 0 1 162 240" stroke="#6EE7B755" strokeWidth="1.5" fill="none"/>
+        <text x="160" y="254" fontSize="7" fill="#6EE7B799">~90°</text>
 
         {/* ── TAP ZONE LABELS ── */}
         {[
-          {id:'monitor',  x:52,  y:134, label:'Monitor'},
-          {id:'head',     x:8,   y:86,  label:'Head'},
-          {id:'shoulders',x:8,   y:118, label:'Shoulders'},
-          {id:'arms',     x:242, y:156, label:'Arms'},
-          {id:'back',     x:238, y:191, label:'Back'},
-          {id:'hips',     x:8,   y:211, label:'Hips'},
-          {id:'feet',     x:240, y:302, label:'Feet'},
-        ].map(({id,x,y,label})=>(
-          <text key={id} x={x} y={y} fontSize="7.5"
-            fill={hover===id?'#FCD34D':'#ffffff50'} fontWeight={hover===id?'700':'400'}
+          {id:'monitor',  x:240, y:123, label:'Monitor', anchor:'end'},
+          {id:'head',     x:10,  y:78,  label:'Head',      anchor:'start'},
+          {id:'shoulders',x:10,  y:114, label:'Shoulders', anchor:'start'},
+          {id:'arms',     x:240, y:209, label:'Arms',      anchor:'end'},
+          {id:'back',     x:240, y:182, label:'Back',      anchor:'end'},
+          {id:'hips',     x:10,  y:230, label:'Hips',      anchor:'start'},
+          {id:'feet',     x:240, y:335, label:'Feet',      anchor:'end'},
+        ].map(({id,x,y,label,anchor})=>(
+          <text key={id} x={x} y={y} fontSize="8" textAnchor={anchor||'start'}
+            fill={hover===id?'#FCD34D':'#ffffff55'} fontWeight={hover===id?'700':'400'}
             style={{cursor:'pointer'}} fontFamily="system-ui, sans-serif"
             onMouseEnter={()=>setHover(id)} onMouseLeave={()=>setHover(null)}
             onClick={()=>setHover(hover===id?null:id)}>
@@ -484,9 +482,9 @@ const PostureDiagram = () => {
         ))}
       </svg>
 
-      {/* Hover info panel */}
+      {/* Info panel */}
       {hover && (
-        <div style={{background:'linear-gradient(135deg,#FCD34D18,#FCD34D08)',border:'1px solid #FCD34D33',borderRadius:13,padding:'12px 14px',marginTop:6,animation:'fu 0.2s ease both'}}>
+        <div style={{background:'linear-gradient(135deg,#FCD34D18,#FCD34D08)',border:'1px solid #FCD34D33',borderRadius:13,padding:'12px 14px',marginTop:6}}>
           <div style={{fontSize:10,color:'#FCD34D',fontWeight:700,textTransform:'uppercase',letterSpacing:.5,marginBottom:5}}>
             👩‍⚕️ {hover.charAt(0).toUpperCase()+hover.slice(1).replace('_',' ')}
           </div>

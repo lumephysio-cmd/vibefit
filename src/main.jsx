@@ -84,7 +84,7 @@ function ResetPassword({ onDone }) {
       <div style={card}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontWeight: 800, fontSize: 28, background: 'linear-gradient(90deg,#6EE7B7,#93C5FD)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 6 }}>
-            VIBEFIT
+            WELLCREW
           </div>
           <div style={{ fontSize: 20, marginBottom: 6 }}>🔑</div>
           <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Set a new password</div>
@@ -188,7 +188,7 @@ function Root() {
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#080810', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui,sans-serif' }}>
       <div style={{ fontWeight: 800, fontSize: 24, background: 'linear-gradient(90deg,#6EE7B7,#93C5FD)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-        VIBEFIT
+        WELLCREW
       </div>
     </div>
   )

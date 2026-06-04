@@ -1671,7 +1671,7 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
         <div style={{fontSize:12,color:"#888",marginBottom:16}}>What your team receives every Monday morning.</div>
         <div style={{background:"#13131f",border:"1px solid #ffffff15",borderRadius:18,overflow:"hidden"}}>
           <div style={{background:"linear-gradient(135deg,#6EE7B722,#93C5FD15)",borderBottom:"1px solid #ffffff10",padding:"20px 20px 16px",textAlign:"center"}}>
-            <div style={{fontWeight:900,fontSize:22,background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:4}}>VIBEFIT</div>
+            <div style={{fontWeight:900,fontSize:22,background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",marginBottom:4}}>WELLCREW</div>
             <div style={{fontSize:12,color:"#888"}}>Weekly Wellness Digest · {new Date().toLocaleDateString('en',{month:'long',day:'numeric',year:'numeric'})}</div>
           </div>
           <div style={{padding:"20px"}}>
@@ -1693,10 +1693,10 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
             </div>
             <div style={{background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",borderRadius:12,padding:"12px 14px",textAlign:"center",border:"1px solid #6EE7B744"}}>
               <div style={{fontSize:13,fontWeight:700,color:"#e8e8f0",marginBottom:3}}>Keep the momentum going! 💪</div>
-              <div style={{fontSize:11,color:"#888"}}>Log your activity in VibeFit to stay on the leaderboard.</div>
+              <div style={{fontSize:11,color:"#888"}}>Log your activity in Wellcrew to stay on the leaderboard.</div>
             </div>
           </div>
-          <div style={{borderTop:"1px solid #ffffff08",padding:"12px 20px",textAlign:"center"}}><div style={{fontSize:10,color:"#555"}}>VibeFit · Built for workplace wellness by Physiotherapist, Brooke Cassar</div></div>
+          <div style={{borderTop:"1px solid #ffffff08",padding:"12px 20px",textAlign:"center"}}><div style={{fontSize:10,color:"#555"}}>Wellcrew · Built for workplace wellness by Physiotherapist, Brooke Cassar</div></div>
         </div>
       </div>}
       {toolSec==="teams"&&<div>
@@ -1714,7 +1714,7 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
       </div>}
       {toolSec==="superadmin"&&cu.is_super_admin&&<div>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><span style={{fontWeight:700,fontSize:15}}>🌐 Super Admin</span><Pill color="#FCD34D" text="BROOKE ONLY"/></div>
-        <div style={{fontSize:12,color:"#888",marginBottom:14}}>Manage all companies on VibeFit.</div>
+        <div style={{fontSize:12,color:"#888",marginBottom:14}}>Manage all companies on Wellcrew.</div>
         <div className="card" style={{marginBottom:14}}>
           <div style={{fontWeight:700,marginBottom:10}}>Create New Company</div>
           <div style={{display:"flex",gap:7,marginBottom:8}}><input placeholder="Company name" value={newCo.name} onChange={e=>setNewCo(c=>({...c,name:e.target.value}))} style={{flex:1}}/><input placeholder="🏢" value={newCo.emoji} onChange={e=>setNewCo(c=>({...c,emoji:e.target.value}))} style={{width:50}}/></div>
@@ -1913,7 +1913,7 @@ export default function App({ session }) {
   const [toasts,setToasts]=useState([]);
   const [pd,setPd]=useState(IP);
   const [notifs,setNotifs]=useState([
-    {id:1,type:"badge",text:"Welcome to VibeFit! 🎉",ts:N-3600000,read:false},
+    {id:1,type:"badge",text:"Welcome to Wellcrew! 🎉",ts:N-3600000,read:false},
   ]);
   const [teams,setTeams]=useState([]);
   const [badges,setBadges]=useState([]);
@@ -2089,7 +2089,7 @@ export default function App({ session }) {
 
   if(profileLoading) return(
     <div style={{minHeight:"100vh",background:"#080810",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{fontWeight:800,fontSize:24,background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>VIBEFIT</div>
+      <div style={{fontWeight:800,fontSize:24,background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>WELLCREW</div>
     </div>
   );
 

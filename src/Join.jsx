@@ -61,7 +61,7 @@ export default function Join({ code }) {
             <>
               <div style={{fontWeight:800,fontSize:18,color:'#e8e8f0',marginBottom:4}}>You're invited as an Admin of</div>
               <div style={{fontWeight:800,fontSize:22,color:displayColor}}>{displayName}</div>
-              <div style={{fontSize:13,color:'#888',marginTop:6}}>on VibeFit — create your admin account below</div>
+              <div style={{fontSize:13,color:'#888',marginTop:6}}>on Wellcrew — create your admin account below</div>
               <div style={{marginTop:10,background:'#C4B5FD15',border:'1px solid #C4B5FD33',borderRadius:10,padding:'8px 14px',display:'inline-block'}}>
                 <span style={{fontSize:12,color:'#C4B5FD',fontWeight:700}}>👑 Company Admin Access</span>
               </div>
@@ -70,7 +70,7 @@ export default function Join({ code }) {
             <>
               <div style={{fontWeight:800,fontSize:18,color:'#e8e8f0',marginBottom:4}}>You're invited to join</div>
               <div style={{fontWeight:800,fontSize:22,color:displayColor}}>{displayName}</div>
-              <div style={{fontSize:13,color:'#888',marginTop:6}}>on VibeFit — create your account below</div>
+              <div style={{fontSize:13,color:'#888',marginTop:6}}>on Wellcrew — create your account below</div>
             </>
           )}
         </div>

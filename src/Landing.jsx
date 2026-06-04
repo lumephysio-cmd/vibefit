@@ -33,7 +33,7 @@ export default function Landing({ onSignup, onLogin }) {
           </span>
         </h1>
         <p style={{ fontSize: 17, color: '#888', lineHeight: 1.7, marginBottom: 36, maxWidth: 520, margin: '0 auto 36px' }}>
-          VibeFit brings physio-backed challenges, team accountability and real habit science to your workplace — not just a step counter.
+          Wellcrew brings physio-backed challenges, team accountability and real habit science to your workplace — not just a step counter.
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           <button onClick={onSignup} style={{ background: 'linear-gradient(135deg,#6EE7B7,#93C5FD)', color: '#080810', border: 'none', borderRadius: 12, padding: '14px 32px', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
@@ -75,7 +75,7 @@ export default function Landing({ onSignup, onLogin }) {
           <div style={{ fontSize: 40, marginBottom: 16 }}>👩‍⚕️</div>
           <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 12 }}>Led by a registered physiotherapist</div>
           <div style={{ fontSize: 14, color: '#aaa', lineHeight: 1.7, marginBottom: 20 }}>
-            Every challenge, every tip and every habit in VibeFit is designed with real physio expertise. We're not guessing what's good for your team's bodies — we know.
+            Every challenge, every tip and every habit in Wellcrew is designed with real physio expertise. We're not guessing what's good for your team's bodies — we know.
           </div>
           <div style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
             {['Evidence-based','Injury prevention','Desk ergonomics','Habit science'].map(t =>
@@ -96,7 +96,7 @@ export default function Landing({ onSignup, onLogin }) {
 
       {/* Footer */}
       <div style={{ borderTop: '1px solid #ffffff08', padding: '20px 24px', textAlign: 'center', fontSize: 12, color: '#444' }}>
-        © 2026 VibeFit · Built for workplace wellness
+        © 2026 Wellcrew · Built for workplace wellness
       </div>
     </div>
   )

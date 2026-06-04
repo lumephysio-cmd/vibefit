@@ -87,7 +87,7 @@ export default function Login({ onSwitch }) {
       <div style={card}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontWeight: 800, fontSize: 28, background: 'linear-gradient(90deg,#6EE7B7,#93C5FD)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 6 }}>
-            VIBEFIT
+            WELLCREW
           </div>
           <div style={{ fontSize: 20, marginBottom: 6 }}>🔑</div>
           <div style={{ fontWeight: 700, fontSize: 16, color: '#e8e8f0', marginBottom: 4 }}>Forgot your password?</div>
@@ -136,7 +136,7 @@ export default function Login({ onSwitch }) {
       <div style={card}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ fontWeight: 800, fontSize: 28, background: 'linear-gradient(90deg,#6EE7B7,#93C5FD)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 6 }}>
-            VIBEFIT
+            WELLCREW
           </div>
           <div style={{ fontSize: 13, color: '#888' }}>Sign in to your account</div>
         </div>

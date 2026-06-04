@@ -84,7 +84,7 @@ export default function Signup({ onSwitch, inviteCode, inviteTeamId, inviteCompa
     <div style={{minHeight:'100vh',background:'#080810',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
       <div style={{width:340,background:'linear-gradient(135deg,#ffffff09,#ffffff04)',border:'1px solid #ffffff12',borderRadius:20,padding:32}}>
         <div style={{textAlign:'center',marginBottom:28}}>
-          <div style={{fontWeight:800,fontSize:28,background:'linear-gradient(90deg,#6EE7B7,#93C5FD)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',marginBottom:6}}>VIBEFIT</div>
+          <div style={{fontWeight:800,fontSize:28,background:'linear-gradient(90deg,#6EE7B7,#93C5FD)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',marginBottom:6}}>WELLCREW</div>
           <div style={{fontSize:13,color:'#888'}}>{inviteCode ? "You've been invited! Create your account" : 'Create your account'}</div>
         </div>
         {error && <div style={{background:'#F9A8D420',border:'1px solid #F9A8D444',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#F9A8D4',marginBottom:14}}>{error}</div>}

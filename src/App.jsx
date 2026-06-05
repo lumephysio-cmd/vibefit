@@ -557,10 +557,11 @@ const AiTab=({challenges,setChallenges,notify,cu})=>{
 // ── FEED TAB ──
 const FeedTab=({feed,setFeed,challenges,users,cu,notify,tips=[]})=>{
   const [ct,setCt]=useState({});
+  const [expanded,setExpanded]=useState({});
   const react=(pid,emoji)=>setFeed(f=>f.map(p=>{if(p.id!==pid)return p;const cur=p.rx[emoji]||[],has=cur.includes(cu.id);return{...p,rx:{...p.rx,[emoji]:has?cur.filter(x=>x!==cu.id):[...cur,cu.id]}};}));
   const comment=pid=>{const t=ct[pid];if(!t?.trim())return;setFeed(f=>f.map(p=>p.id!==pid?p:{...p,comments:[...p.comments,{uid:cu.id,text:t}]}));setCt(c=>({...c,[pid]:""}));};
+  const toggle=pid=>setExpanded(e=>({...e,[pid]:!e[pid]}));
 
-  // Merge tips + activity posts, sorted newest first
   const items=[
     ...tips.map(t=>({...t,_kind:"tip",_ts:new Date(t.created_at).getTime()||0})),
     ...feed.map(p=>({...p,_kind:"post",_ts:p.ts}))
@@ -574,42 +575,192 @@ const FeedTab=({feed,setFeed,challenges,users,cu,notify,tips=[]})=>{
       const ch=challenges.find(x=>String(x.id)===String(post.cid));
       if(!ch)return null;
       const isHabit=ch.type==="habit";
-      return<div key={post.id} className="card" style={{marginBottom:12}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+      const totalRx=RX.reduce((s,e)=>(post.rx[e]||[]).length?s+(post.rx[e]||[]).length:s,0);
+      const isOpen=expanded[post.id];
+      const hasComments=post.comments.length>0;
+
+      return<div key={post.id} className="card" style={{marginBottom:10,padding:"12px 14px"}}>
+        {/* Header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
-            <Av u={u} s={32}/>
-            <div><div style={{fontWeight:700,fontSize:13}}>{u.name}</div><div style={{fontSize:10,color:"#888"}}>{ago(post.ts)}</div></div>
+            <Av u={u} s={30}/>
+            <div>
+              <div style={{fontWeight:700,fontSize:13}}>{u.name}</div>
+              <div style={{fontSize:10,color:"#888"}}>{ago(post.ts)}</div>
+            </div>
           </div>
-          <Pill color={ch.color} text={`${ch.icon} ${ch.title}`}/>
+          <span style={{fontSize:10,background:`${ch.color}18`,color:ch.color,border:`1px solid ${ch.color}33`,borderRadius:10,padding:"2px 8px",fontWeight:700}}>{ch.icon} {ch.title}</span>
         </div>
+
+        {/* Content */}
         {isHabit
-          ?<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-              <span style={{fontSize:28}}>✅</span>
+          ?<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+              <span style={{fontSize:22}}>✅</span>
               <span style={{fontWeight:700,fontSize:14,color:ch.color}}>Completed!</span>
             </div>
-          :<>
-            <div style={{display:"flex",alignItems:"baseline",gap:5,marginBottom:5}}>
-              <span style={{fontWeight:800,fontSize:26,color:ch.color}}>{post.val.toLocaleString()}</span>
+          :<div style={{marginBottom:8}}>
+            <div style={{display:"flex",alignItems:"baseline",gap:5,marginBottom:4}}>
+              <span style={{fontWeight:900,fontSize:24,color:ch.color}}>{post.val.toLocaleString()}</span>
               <span style={{fontSize:12,color:"#888"}}>{ch.unit}</span>
-              <span style={{fontSize:11,color:"#555",marginLeft:"auto"}}>/ {ch.goal.toLocaleString()}</span>
+              <span style={{fontSize:10,color:"#555",marginLeft:"auto"}}>/ {ch.goal.toLocaleString()}</span>
             </div>
-            <div style={{background:"#ffffff08",borderRadius:6,height:4,marginBottom:8}}>
-              <div style={{width:`${Math.min(100,(post.val/ch.goal)*100)}%`,height:"100%",background:ch.color,borderRadius:6}}/>
+            <div style={{background:"#ffffff08",borderRadius:4,height:3}}>
+              <div style={{width:`${Math.min(100,(post.val/ch.goal)*100)}%`,height:"100%",background:ch.color,borderRadius:4}}/>
             </div>
-          </>
+          </div>
         }
         {post.note&&<div style={{fontSize:12,color:"#888",marginBottom:8,fontStyle:"italic"}}>"{post.note}"</div>}
-        <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8}}>
-          {RX.map(e=>{const us=post.rx[e]||[],a=us.includes(cu.id);return<button key={e} onClick={()=>react(post.id,e)} style={{background:a?"#ffffff15":"transparent",border:`1px solid ${a?"#ffffff30":"#ffffff0f"}`,borderRadius:20,padding:"3px 8px",fontSize:12,color:a?"#e8e8f0":"#888",display:"flex",gap:3,alignItems:"center"}}>{e}{us.length>0&&<span style={{fontSize:10}}>{us.length}</span>}</button>;})}
+
+        {/* Reactions row */}
+        <div style={{display:"flex",alignItems:"center",gap:3,flexWrap:"wrap"}}>
+          {RX.map(e=>{const us=post.rx[e]||[],a=us.includes(cu.id);return(
+            <button key={e} onClick={()=>react(post.id,e)} style={{background:a?"#ffffff14":"transparent",border:`1px solid ${a?"#ffffff28":"transparent"}`,borderRadius:16,padding:"2px 7px",fontSize:12,color:a?"#e8e8f0":"#666",display:"flex",gap:2,alignItems:"center",minWidth:28}}>
+              {e}{us.length>0&&<span style={{fontSize:9,color:a?"#aaa":"#666"}}>{us.length}</span>}
+            </button>
+          );})}
+          {/* Comment toggle */}
+          <button onClick={()=>toggle(post.id)} style={{marginLeft:"auto",background:"transparent",border:"none",fontSize:11,color:isOpen?"#6EE7B7":"#555",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+            💬{hasComments&&<span style={{fontSize:10}}>{post.comments.length}</span>}
+          </button>
         </div>
-        {post.comments.map((c,i)=>{const u2=users.find(x=>x.id===c.uid)||{name:"?",color:"#888"};return<div key={i} style={{display:"flex",gap:6,marginBottom:5}}><Av u={u2} s={22}/><div style={{background:"#ffffff08",borderRadius:9,padding:"5px 9px",flex:1,fontSize:12,color:"#aaa"}}><span style={{color:u2.color,fontWeight:600}}>{u2.name?.split(" ")[0]} </span>{c.text}</div></div>;})}
-        <div style={{display:"flex",gap:6,marginTop:7}}>
-          <Av u={cu} s={22}/>
-          <input placeholder="Comment…" value={ct[post.id]||""} onChange={e=>setCt(c=>({...c,[post.id]:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&comment(post.id)} style={{flex:1,fontSize:12}}/>
-        </div>
+
+        {/* Comments (expanded) */}
+        {isOpen&&<div style={{marginTop:10,borderTop:"1px solid #ffffff08",paddingTop:10}}>
+          {post.comments.map((c,i)=>{const u2=users.find(x=>x.id===c.uid)||{name:"?",color:"#888"};return(
+            <div key={i} style={{display:"flex",gap:6,marginBottom:6}}>
+              <Av u={u2} s={20}/>
+              <div style={{background:"#ffffff07",borderRadius:9,padding:"5px 9px",flex:1,fontSize:12,color:"#aaa"}}>
+                <span style={{color:u2.color,fontWeight:600}}>{u2.name?.split(" ")[0]} </span>{c.text}
+              </div>
+            </div>
+          );})}
+          <div style={{display:"flex",gap:6,marginTop:6}}>
+            <Av u={cu} s={20}/>
+            <input placeholder="Reply…" value={ct[post.id]||""} onChange={e=>setCt(c=>({...c,[post.id]:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&comment(post.id)} style={{flex:1,fontSize:12,padding:"5px 10px"}}/>
+          </div>
+        </div>}
       </div>;
     })}
-    {items.length===0&&<div style={{textAlign:"center",color:"#888",padding:"40px 0",fontSize:13}}>No posts yet!</div>}
+    {items.length===0&&<div style={{textAlign:"center",color:"#888",padding:"40px 0",fontSize:13}}>
+      <div style={{fontSize:36,marginBottom:8}}>👥</div>No team activity yet.
+    </div>}
+  </div>;
+};
+
+// ── HOME TAB ──
+const HomeTab=({cu,checked,onCheckin,lastCheckin,feed,challenges,onLog,users,setTab,activePulse,myPulseVoted,setMyPulseVoted,activeSurvey,mySurveyDone,setMySurveyDone,iLoggedToday,nudgeCount})=>{
+  const h=new Date().getHours();
+  const greeting=h<5?"Up late 🌙":h<12?"Good morning":"Good afternoon";
+  const firstName=cu.name?.split(" ")[0]||cu.name;
+  const weekStart=new Date();weekStart.setDate(weekStart.getDate()-weekStart.getDay());weekStart.setHours(0,0,0,0);
+  const active=challenges.filter(c=>c.active);
+  const recentPosts=[...feed].sort((a,b)=>b.ts-a.ts).filter(p=>{
+    const ch=challenges.find(c=>String(c.id)===String(p.cid));
+    return ch&&p.uid!==cu.id;
+  }).slice(0,3);
+
+  return<div>
+    {/* Greeting */}
+    <div style={{marginBottom:20}}>
+      <div style={{fontSize:22,fontWeight:800,marginBottom:3}}>{greeting}, {firstName} 👋</div>
+      <div style={{fontSize:12,color:"#888"}}>{new Date().toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long"})}</div>
+    </div>
+
+    {/* Nudge */}
+    {!iLoggedToday&&nudgeCount>0&&<div style={{background:"#6EE7B70d",border:"1px solid #6EE7B730",borderRadius:14,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
+      <span style={{fontSize:20}}>👀</span>
+      <div style={{flex:1,fontSize:12,color:"#aaa"}}><span style={{fontWeight:700,color:"#6EE7B7"}}>{nudgeCount} teammate{nudgeCount!==1?"s":""}</span> already logged today</div>
+      <button onClick={()=>onLog(true)} style={{background:"#6EE7B722",border:"1px solid #6EE7B744",color:"#6EE7B7",borderRadius:9,padding:"5px 12px",fontSize:11,fontWeight:700}}>Log now</button>
+    </div>}
+
+    {/* Pulse / Survey */}
+    {activePulse&&!myPulseVoted&&<PulseCard pulse={activePulse} cu={cu} onVoted={()=>setMyPulseVoted(true)}/>}
+    {activeSurvey&&!mySurveyDone&&<SurveyCard survey={activeSurvey} cu={cu} onDone={()=>setMySurveyDone(true)}/>}
+
+    {/* Check-in */}
+    {!checked&&<CheckIn onDone={onCheckin}/>}
+    {checked&&lastCheckin&&<ReadinessCard checkin={lastCheckin}/>}
+
+    {/* Today's challenges */}
+    {active.length>0&&<>
+      <div style={{fontWeight:700,fontSize:14,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span>Today's challenges</span>
+        <button onClick={()=>setTab("train")} style={{fontSize:11,color:"#6EE7B7",background:"transparent",border:"none",cursor:"pointer",fontWeight:700}}>See all →</button>
+      </div>
+      {active.map(ch=>{
+        const myPosts=feed.filter(p=>p.uid===cu.id&&String(p.cid)===String(ch.id)&&new Date(p.ts)>=weekStart);
+        const tot=myPosts.reduce((s,p)=>s+p.val,0);
+        const pct=Math.min(1,ch.type==="habit"?myPosts.filter(p=>new Date(p.ts).toDateString()===new Date().toDateString()).length:tot/ch.goal);
+        const loggedToday=myPosts.some(p=>new Date(p.ts).toDateString()===new Date().toDateString());
+        return<div key={ch.id} className="card" style={{marginBottom:8,display:"flex",gap:10,alignItems:"center",borderColor:`${ch.color}22`}}>
+          <div style={{fontSize:24,flexShrink:0}}>{ch.icon}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:700,fontSize:13,marginBottom:5}}>{ch.title}</div>
+            <div style={{background:"#ffffff08",borderRadius:4,height:3,marginBottom:4}}>
+              <div style={{width:`${pct*100}%`,height:"100%",background:ch.color,borderRadius:4,transition:"width .4s"}}/>
+            </div>
+            <div style={{fontSize:10,color:"#888"}}>{ch.type!=="habit"?`${tot.toLocaleString()} / ${ch.goal.toLocaleString()} ${ch.unit}`:`${pct===1?"Done!":"Not logged yet"}`}</div>
+          </div>
+          <button onClick={()=>onLog(ch)} style={{background:loggedToday?"#ffffff08":`${ch.color}22`,border:`1px solid ${loggedToday?"#ffffff10":ch.color+"44"}`,color:loggedToday?"#555":ch.color,borderRadius:10,padding:"7px 13px",fontSize:12,fontWeight:700,flexShrink:0}}>
+            {loggedToday?"✓":"+ Log"}
+          </button>
+        </div>;
+      })}
+    </>}
+
+    {/* Recent crew */}
+    {recentPosts.length>0&&<>
+      <div style={{fontWeight:700,fontSize:14,marginBottom:10,marginTop:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span>Crew activity</span>
+        <button onClick={()=>setTab("crew")} style={{fontSize:11,color:"#6EE7B7",background:"transparent",border:"none",cursor:"pointer",fontWeight:700}}>See all →</button>
+      </div>
+      {recentPosts.map(post=>{
+        const u=users.find(x=>x.id===post.uid)||{name:"?",color:"#888"};
+        const ch=challenges.find(x=>String(x.id)===String(post.cid));
+        if(!ch)return null;
+        return<div key={post.id} style={{display:"flex",gap:9,alignItems:"center",padding:"10px 12px",background:"#ffffff05",borderRadius:12,marginBottom:6,border:"1px solid #ffffff08"}}>
+          <Av u={u} s={32}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:12,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name?.split(" ")[0]} · {ch.icon} {ch.title}</div>
+            <div style={{fontSize:10,color:"#888"}}>{post.val>0?`${post.val} ${ch.unit}`:"Completed"} · {ago(post.ts)}</div>
+          </div>
+        </div>;
+      })}
+    </>}
+
+    {active.length===0&&!checked&&recentPosts.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"#888"}}>
+      <div style={{fontSize:40,marginBottom:10}}>👋</div>
+      <div style={{fontSize:14,fontWeight:700,color:"#ccc",marginBottom:6}}>Welcome to Wellcrew!</div>
+      <div style={{fontSize:12}}>Start by completing your daily check-in above.</div>
+    </div>}
+  </div>;
+};
+
+// ── TRAIN TAB (challenges + leaderboard) ──
+const TrainTab=({challenges,feed,cu,onLog,lb,users,badges,teams,cu2,notify,session,setChallenges})=>{
+  const [sec,setSec]=useState("challenges");
+  return<div>
+    <div style={{display:"flex",gap:5,marginBottom:14,background:"#ffffff07",borderRadius:11,padding:3}}>
+      {[["challenges","🏋️ Challenges"],["board","🥇 Leaderboard"]].map(([id,lbl])=>(
+        <button key={id} onClick={()=>setSec(id)} style={{flex:1,padding:"8px 4px",borderRadius:8,border:"none",background:sec===id?"#6EE7B722":"transparent",color:sec===id?"#6EE7B7":"#888",fontWeight:sec===id?700:400,fontSize:12}}>{lbl}</button>
+      ))}
+    </div>
+    {sec==="challenges"&&<ChalTab challenges={challenges} feed={feed} cu={cu} onLog={onLog}/>}
+    {sec==="board"&&<LbTab lb={lb} feed={feed} users={users} challenges={challenges} cu={cu} teams={teams} badges={badges}/>}
+  </div>;
+};
+
+// ── ME TAB (profile + messages) ──
+const MeTab=({cu,lb,pd,setPd,notify,checked,onCheckin,lastCheckin,badges,awardBadge,allUsers})=>{
+  const [sec,setSec]=useState("profile");
+  return<div>
+    <div style={{display:"flex",gap:5,marginBottom:14,background:"#ffffff07",borderRadius:11,padding:3}}>
+      {[["profile","👤 Profile"],["messages","💬 Messages"]].map(([id,lbl])=>(
+        <button key={id} onClick={()=>setSec(id)} style={{flex:1,padding:"8px 4px",borderRadius:8,border:"none",background:sec===id?"#6EE7B722":"transparent",color:sec===id?"#6EE7B7":"#888",fontWeight:sec===id?700:400,fontSize:12}}>{lbl}</button>
+      ))}
+    </div>
+    {sec==="profile"&&<ProfileTab cu={cu} lb={lb} pd={pd} setPd={setPd} notify={notify} checked={checked} onCheckin={onCheckin} lastCheckin={lastCheckin} badges={badges} awardBadge={awardBadge}/>}
+    {sec==="messages"&&<MsgTab cu={cu} users={allUsers}/>}
   </div>;
 };
 
@@ -1889,7 +2040,7 @@ export default function App({ session }) {
   const th=dark?DK:LT;
   const [cu,setCu]=useState(null);
   const [profileLoading,setProfileLoading]=useState(true);
-  const [tab,setTab]=useState("feed");
+  const [tab,setTab]=useState("home");
   const [feed,setFeed]=useState(IF);
   const [msgs,setMsgs]=useState(IM);
   const [challenges,setChallenges]=useState(IC);
@@ -2096,7 +2247,7 @@ export default function App({ session }) {
   const unread=notifs.filter(n=>!n.read).length;
   const myR=lb.findIndex(e=>e.uid===cu?.id)+1;
   const allUsers=[cu,...users.filter(u=>u.id!==cu?.id)];
-  const NAV=[["feed","Feed","📣"],["challenges","Train","🏆"],["leaderboard","Board","🥇"],["messages","DMs","💬"],["physio","Physio","🩺"],...(cu?.is_admin?[["ai","AI ✨","🤖"],["admin","Admin","⚙️"]]:[]),["profile","Me","👤"]];
+  const NAV=[["home","Home","🏠"],["crew","Crew","👥"],["train","Train","🏋️"],["physio","Physio","🩺"],...(cu?.is_admin?[["admin","Admin","⚙️"]]:[]),["me","Me","👤"]];
   // Nudge: how many teammates logged activity today (excluding self)
   const todayLogs=feed.filter(p=>new Date(p.ts).toDateString()===todayStr());
   const iLoggedToday=todayLogs.some(p=>p.uid===cu?.id);
@@ -2130,33 +2281,18 @@ export default function App({ session }) {
         </div>
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"12px 13px 90px"}}>
-        {tab==="feed"&&<>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <div style={{fontWeight:700,fontSize:17}}>Activity Feed</div>
+        {tab==="home"&&<HomeTab cu={cu} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin} feed={feed} challenges={challenges} onLog={ch=>setShowLog(ch||true)} users={allUsers} setTab={setTab} activePulse={activePulse} myPulseVoted={myPulseVoted} setMyPulseVoted={setMyPulseVoted} activeSurvey={activeSurvey} mySurveyDone={mySurveyDone} setMySurveyDone={setMySurveyDone} iLoggedToday={iLoggedToday} nudgeCount={nudgeCount}/>}
+        {tab==="crew"&&<div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{fontWeight:700,fontSize:17}}>Team Feed</div>
             <Btn color="#6EE7B7" text="+ Log" onClick={()=>setShowLog(true)}/>
           </div>
-          {/* Nudge banner */}
-          {!iLoggedToday&&nudgeCount>0&&(
-            <div style={{background:"#6EE7B70d",border:"1px solid #6EE7B733",borderRadius:14,padding:"12px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:22}}>👀</span>
-              <div style={{flex:1}}>
-                <div style={{fontWeight:700,fontSize:13,color:"#6EE7B7"}}>{nudgeCount} teammate{nudgeCount!==1?"s":""} already logged today</div>
-                <div style={{fontSize:11,color:"#888",marginTop:1}}>Don't fall behind — log your progress!</div>
-              </div>
-              <button onClick={()=>setShowLog(true)} style={{background:"#6EE7B722",border:"1px solid #6EE7B744",color:"#6EE7B7",borderRadius:9,padding:"6px 12px",fontSize:12,fontWeight:700,flexShrink:0}}>Log 📊</button>
-            </div>
-          )}
-          {activePulse&&!myPulseVoted&&<PulseCard pulse={activePulse} cu={cu} onVoted={()=>setMyPulseVoted(true)}/>}
-          {activeSurvey&&!mySurveyDone&&<SurveyCard survey={activeSurvey} cu={cu} onDone={()=>setMySurveyDone(true)}/>}
           <FeedTab feed={feed} setFeed={setFeed} challenges={challenges} users={allUsers} cu={cu} notify={notify} tips={tips}/>
-        </>}
-        {tab==="challenges"&&<ChalTab challenges={challenges} feed={feed} cu={cu} onLog={ch=>setShowLog(ch)}/>}
-        {tab==="leaderboard"&&<LbTab lb={lb} feed={feed} users={allUsers} challenges={challenges} cu={cu} teams={teams} badges={badges}/>}
-        {tab==="messages"&&<MsgTab cu={cu} users={allUsers} messages={msgs} setMessages={setMsgs}/>}
+        </div>}
+        {tab==="train"&&<TrainTab challenges={challenges} feed={feed} cu={cu} onLog={ch=>setShowLog(ch)} lb={lb} users={allUsers} badges={badges} teams={teams}/>}
         {tab==="physio"&&<PhysioTab cu={cu}/>}
-        {tab==="ai"&&<AiTab challenges={challenges} setChallenges={setChallenges} notify={notify} cu={cu}/>}
         {tab==="admin"&&cu?.is_admin&&<AdminTab cu={cu} users={allUsers} setUsers={setUsers} challenges={challenges} setChallenges={setChallenges} notify={notify} addNotif={addNotif} session={session} onTipCreated={handleTipCreated} feed={feed} teams={teams}/>}
-        {tab==="profile"&&<ProfileTab cu={cu} lb={lb} pd={pd} setPd={setPd} notify={notify} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin} badges={badges} awardBadge={awardBadge}/>}
+        {tab==="me"&&<MeTab cu={cu} lb={lb} pd={pd} setPd={setPd} notify={notify} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin} badges={badges} awardBadge={awardBadge} allUsers={allUsers}/>}
       </div>
     </div>
   </>;

@@ -684,10 +684,10 @@ const HomeTab=({cu,checked,onCheckin,lastCheckin,feed,challenges,onLog,users,set
     {/* Today's challenges */}
     {active.length>0&&<>
       <div style={{fontWeight:700,fontSize:14,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span>Today's challenges</span>
-        <button onClick={()=>setTab("train")} style={{fontSize:11,color:"#6EE7B7",background:"transparent",border:"none",cursor:"pointer",fontWeight:700}}>See all →</button>
+        <span>Today's challenge</span>
+        <button onClick={()=>setTab("train")} style={{fontSize:11,color:"#6EE7B7",background:"transparent",border:"none",cursor:"pointer",fontWeight:700}}>Details →</button>
       </div>
-      {active.map(ch=>{
+      {active.slice(0,1).map(ch=>{
         const myPosts=feed.filter(p=>p.uid===cu.id&&String(p.cid)===String(ch.id)&&new Date(p.ts)>=weekStart);
         const tot=myPosts.reduce((s,p)=>s+p.val,0);
         const pct=Math.min(1,ch.type==="habit"?myPosts.filter(p=>new Date(p.ts).toDateString()===new Date().toDateString()).length:tot/ch.goal);
@@ -1702,6 +1702,9 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
     if(!chF.title||!chF.goal)return;
     const start=new Date().toISOString().split("T")[0];
     const end=new Date(Date.now()+7*864e5).toISOString().split("T")[0];
+    // Deactivate any currently active challenges first (one at a time)
+    await supabase.from('challenges').update({active:false}).eq('company_id',cu.company_id).eq('active',true);
+    setChallenges(c=>c.map(x=>({...x,active:false})));
     const{data,error}=await supabase.from('challenges').insert({title:chF.title,icon:chF.icon,unit:chF.unit,goal:parseFloat(chF.goal),color:chF.color,type:chF.type,physio_note:chF.physioNote,active:true,start_date:start,end_date:end,company_id:cu.company_id}).select().single();
     if(!error&&data){setChallenges(c=>[...c,{...data,desc:data.description,physioNote:data.physio_note,endDate:data.end_date}]);setChF({title:"",icon:"🏃",unit:"",goal:"",color:"#6EE7B7",type:"count",physioNote:""});notify("✅ Challenge created!");addNotif("challenge",`New challenge: ${data.title}`);}
     else notify("❌ Couldn't save challenge — try again.");
@@ -1813,7 +1816,15 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
         {challenges.map(ch=><div key={ch.id} className="card" style={{marginBottom:8,display:"flex",gap:9,alignItems:"center",opacity:ch.active?1:.6}}>
           <span style={{fontSize:20}}>{ch.icon}</span>
           <div style={{flex:1}}><div style={{fontWeight:700,color:ch.color,fontSize:13}}>{ch.title}</div><div style={{fontSize:11,color:"#888"}}>{ch.type==="habit"?"Habit ✅":ch.goal?.toLocaleString()+" "+ch.unit}</div></div>
-          <button onClick={async()=>{await supabase.from('challenges').update({active:!ch.active}).eq('id',ch.id);setChallenges(c=>c.map(x=>x.id===ch.id?{...x,active:!x.active}:x));}} style={{background:`${ch.active?"#FCD34D":"#6EE7B7"}15`,border:`1px solid ${ch.active?"#FCD34D":"#6EE7B7"}33`,color:ch.active?"#FCD34D":"#6EE7B7",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700}}>{ch.active?"Pause":"Resume"}</button>
+          <button onClick={async()=>{
+  if(!ch.active){
+    // Resuming — deactivate all others first
+    await supabase.from('challenges').update({active:false}).eq('company_id',cu.company_id).eq('active',true);
+    setChallenges(c=>c.map(x=>({...x,active:false})));
+  }
+  await supabase.from('challenges').update({active:!ch.active}).eq('id',ch.id);
+  setChallenges(c=>c.map(x=>x.id===ch.id?{...x,active:!x.active}:x));
+}} style={{background:`${ch.active?"#FCD34D":"#6EE7B7"}15`,border:`1px solid ${ch.active?"#FCD34D":"#6EE7B7"}33`,color:ch.active?"#FCD34D":"#6EE7B7",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700}}>{ch.active?"Pause":"Resume"}</button>
         </div>)}
       </div>}
       {toolSec==="insights"&&<InsightsSection cu={cu} session={session} users={users}/>}

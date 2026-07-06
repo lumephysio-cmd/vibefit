@@ -4,6 +4,7 @@ import PhysioTab from './PhysioTab';
 import LbTab from './LbTab';
 import { BADGE_DEFS } from './badges';
 import InsightsSection from './InsightsSection';
+import WellnessTab from './WellnessTab';
 
 // ── CONSTANTS ──
 const TC=["#6EE7B7","#93C5FD","#F9A8D4","#FCD34D","#C4B5FD","#FB923C","#34D399","#F472B6"];
@@ -1609,7 +1610,7 @@ export default function App({ session }) {
   const unread=notifs.filter(n=>!n.read).length;
   const myR=lb.findIndex(e=>e.uid===cu?.id)+1;
   const allUsers=[cu,...users.filter(u=>u.id!==cu?.id)];
-  const NAV=[["feed","Feed","📣"],["challenges","Train","🏆"],["leaderboard","Board","🥇"],["messages","DMs","💬"],["physio","Physio","🩺"],...(cu?.is_admin?[["ai","AI ✨","🤖"],["admin","Admin","⚙️"]]:[]),["profile","Me","👤"]];
+  const NAV=[["feed","Feed","📣"],["challenges","Train","🏆"],["leaderboard","Board","🥇"],["messages","DMs","💬"],["physio","Physio","🩺"],["wellness","Wellness","🌸"],...(cu?.is_admin?[["ai","AI ✨","🤖"],["admin","Admin","⚙️"]]:[]),["profile","Me","👤"]];
   // Nudge: how many teammates logged activity today (excluding self)
   const todayLogs=feed.filter(p=>new Date(p.ts).toDateString()===todayStr());
   const iLoggedToday=todayLogs.some(p=>p.uid===cu?.id);
@@ -1667,6 +1668,7 @@ export default function App({ session }) {
         {tab==="leaderboard"&&<LbTab lb={lb} feed={feed} users={allUsers} challenges={challenges} cu={cu} teams={teams} badges={badges}/>}
         {tab==="messages"&&<MsgTab cu={cu} users={allUsers} messages={msgs} setMessages={setMsgs}/>}
         {tab==="physio"&&<PhysioTab cu={cu}/>}
+        {tab==="wellness"&&<WellnessTab cu={cu} notify={notify}/>}
         {tab==="ai"&&<AiTab challenges={challenges} setChallenges={setChallenges} notify={notify} cu={cu}/>}
         {tab==="admin"&&cu?.is_admin&&<AdminTab cu={cu} users={allUsers} setUsers={setUsers} challenges={challenges} setChallenges={setChallenges} notify={notify} addNotif={addNotif} session={session} onTipCreated={handleTipCreated} feed={feed} teams={teams}/>}
         {tab==="profile"&&<ProfileTab cu={cu} lb={lb} pd={pd} setPd={setPd} notify={notify} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin} badges={badges} awardBadge={awardBadge}/>}

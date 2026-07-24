@@ -79,7 +79,7 @@ export default function Join({ code }) {
           inviteTeamId={team?.id || null}
           inviteCompanyId={data.company_id}
           inviteIsAdmin={isAdminInvite}
-          onSwitch={()=>{}}
+          onSwitch={()=>{ window.location.href = '/' }}
         />
       </div>
     </div>

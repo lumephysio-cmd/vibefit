@@ -15,7 +15,7 @@ export default function Signup({ onSwitch, inviteCode, inviteTeamId, inviteCompa
   const handleResend = async () => {
     setResending(true)
     const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin
-    await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: siteUrl } })
+    await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: inviteCode ? `${siteUrl}/join/${inviteCode}` : siteUrl } })
     setResent(true)
     setResending(false)
   }
@@ -29,13 +29,21 @@ export default function Signup({ onSwitch, inviteCode, inviteTeamId, inviteCompa
       email,
       password,
       options: {
-        data: { name, role },
-        emailRedirectTo: siteUrl,
+        data: {
+          name,
+          role,
+          // Store invite info in metadata so profile update can be applied after email confirmation
+          pending_team_id: inviteTeamId || null,
+          pending_company_id: inviteCompanyId || null,
+          pending_is_admin: inviteIsAdmin || false,
+        },
+        emailRedirectTo: inviteCode ? `${siteUrl}/join/${inviteCode}` : siteUrl,
       }
     })
     if (signUpError) { setError(signUpError.message); setLoading(false); return }
-    if (data.user) {
-      // Build profile update object
+    if (data.user && data.session) {
+      // Session exists (email confirmation disabled in this project) — apply profile update now
+      // and skip the "check your email" screen since no email was sent.
       const updates = {}
       if (inviteTeamId) updates.team_id = inviteTeamId
       if (inviteCompanyId) updates.company_id = inviteCompanyId
@@ -43,7 +51,11 @@ export default function Signup({ onSwitch, inviteCode, inviteTeamId, inviteCompa
       if (Object.keys(updates).length > 0) {
         await supabase.from('profiles').update(updates).eq('id', data.user.id)
       }
+      setLoading(false)
+      return
     }
+    // No session yet — email confirmation is required, invite info is stored
+    // in user metadata and will be applied in main.jsx on SIGNED_IN event
     setDone(true)
     setLoading(false)
   }

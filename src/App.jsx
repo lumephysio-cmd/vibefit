@@ -4,6 +4,7 @@ import PhysioTab from './PhysioTab';
 import LbTab from './LbTab';
 import { BADGE_DEFS } from './badges';
 import InsightsSection from './InsightsSection';
+import HRDashboard from './HRDashboard';
 
 // ── CONSTANTS ──
 const TC=["#6EE7B7","#93C5FD","#F9A8D4","#FCD34D","#C4B5FD","#FB923C","#34D399","#F472B6"];
@@ -20,7 +21,7 @@ const IM={};
 const IP={mood:[{date:"Mar 17",val:3},{date:"Mar 20",val:5},{date:"Mar 23",val:5}],notes:["Feeling great after the run!"]};
 
 // ── HELPERS ──
-const ago=ts=>{const d=Date.now()-ts;if(d<60000)return"just now";if(d<3600000)return`${Math.floor(d/60000)}m`;return`${Math.floor(d/3600000)}h`;};
+const ago=ts=>{const d=Date.now()-ts;if(d<60000)return"just now";if(d<3600000)return`${Math.floor(d/60000)}m`;if(d<86400000)return`${Math.floor(d/3600000)}h`;if(d<604800000)return`${Math.floor(d/86400000)}d`;return`${Math.floor(d/604800000)}w`;};
 const ini=n=>n?n.split(" ").map(p=>p[0]).join("").toUpperCase().slice(0,2):"?";
 let _c=0;const uid=()=>++_c;
 const todayStr=()=>new Date().toDateString();
@@ -164,6 +165,8 @@ const CheckIn=({onDone})=>{
 
 // ── READINESS CARD (shown in feed after check-in) ──
 const ReadinessCard=({checkin})=>{
+  const [showSleepPanel,setShowSleepPanel]=useState(false);
+  const [showMindPanel,setShowMindPanel]=useState(false);
   const r=checkin.readiness;
   const col=readinessColor(r);
   const label=readinessLabel(r);
@@ -210,6 +213,36 @@ const ReadinessCard=({checkin})=>{
     ?"Your readiness is low today. Prioritise the basics: hydrate, gentle movement and rest. Your body is asking for recovery."
     :INSIGHTS[weakest.k][checkin[weakest.k]>=3?1:0];
 
+  // Sleep routine tips — shown when sleep quality is poor or hours are short
+  const sleepHrs=checkin.sleep_hours;
+  const sleepQ=checkin.sleep;
+  const showSleepRoutine=sleepHrs!=null&&sleepHrs<7||sleepQ!=null&&sleepQ<=2;
+  const SLEEP_TIPS=[
+    {icon:"🌙",tip:"Set a consistent bedtime — even on weekends. Your circadian rhythm thrives on routine."},
+    {icon:"📵",tip:"Put your phone away 30–60 min before bed. Blue light delays melatonin by up to 2 hours."},
+    {icon:"🌡️",tip:"Keep your room cool (16–19°C). A drop in core temp triggers deeper sleep stages."},
+    {icon:"🧘",tip:"Try 4-7-8 breathing: inhale 4s, hold 7s, exhale 8s. Activates your rest-and-digest system."},
+    {icon:"☕",tip:"Avoid caffeine after 2pm — its half-life is ~5 hours, so it's still active at bedtime."},
+    {icon:"🚿",tip:"A warm shower 1–2h before bed helps lower core body temp, signalling it's time to sleep."},
+  ];
+  // Pick 3 tips that rotate daily so it feels fresh
+  const dayIdx=new Date().getDate();
+  const tips=SLEEP_TIPS.slice(dayIdx%SLEEP_TIPS.length).concat(SLEEP_TIPS).slice(0,3);
+
+  // Mindfulness tips — shown when mood is low
+  const showMindfulness=checkin.mood!=null&&checkin.mood<=2;
+  const MINDFULNESS_TIPS=[
+    {icon:"🌬️",tip:"Box breathing: inhale 4s → hold 4s → exhale 4s → hold 4s. Repeat 4 times to calm your nervous system fast."},
+    {icon:"🖐️",tip:"5-4-3-2-1 grounding: name 5 things you see, 4 you can touch, 3 you hear, 2 you smell, 1 you taste. Stops a spiral instantly."},
+    {icon:"🧠",tip:"Name the emotion out loud — 'I feel anxious'. Labelling activates your prefrontal cortex and dials down the amygdala."},
+    {icon:"🚶",tip:"A 10-minute walk outside lowers cortisol more reliably than most other quick interventions. Even a slow one counts."},
+    {icon:"✍️",tip:"Write 3 things you're grateful for — specific ones, not generic. This actively shifts your brain's attention filter."},
+    {icon:"💧",tip:"Drink a full glass of water slowly. Dehydration amplifies negative mood by up to 20% — it's often overlooked."},
+    {icon:"📞",tip:"Send a voice note to someone you care about. Social connection is the fastest mood regulator we have."},
+    {icon:"🎵",tip:"Put on music that matches how you want to feel, not how you feel now. Your brain will follow the rhythm."},
+  ];
+  const mindfulnessTips=MINDFULNESS_TIPS.slice((dayIdx+3)%MINDFULNESS_TIPS.length).concat(MINDFULNESS_TIPS).slice(0,3);
+
   return<div className="card fu" style={{marginBottom:12,background:"linear-gradient(135deg,#6EE7B710,#93C5FD08)",borderColor:"#6EE7B730"}}>
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
       <div style={{position:"relative",width:64,height:64,flexShrink:0}}>
@@ -243,6 +276,184 @@ const ReadinessCard=({checkin})=>{
       <div>
         <div style={{fontSize:12,color:"#bbb",lineHeight:1.6,marginBottom:timeKey?6:0}}>{mainInsight}</div>
         {timeKey&&<div style={{fontSize:11,color:"#666",lineHeight:1.5,borderTop:"1px solid #ffffff0f",paddingTop:5}}>{timeNotes[timeKey]}</div>}
+      </div>
+    </div>
+    {showSleepRoutine&&<div style={{marginTop:8}}>
+      <button onClick={()=>setShowSleepPanel(v=>!v)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#6EE7B710",border:"1px solid #6EE7B725",borderRadius:10,padding:"9px 13px",cursor:"pointer",color:"#6EE7B7",fontWeight:700,fontSize:12}}>
+        <span>😴 Sleep Routine Tips</span>
+        <span style={{fontSize:10,color:"#555"}}>{showSleepPanel?"▲ hide":"▼ show"}</span>
+      </button>
+      {showSleepPanel&&<div style={{background:"#6EE7B708",border:"1px solid #6EE7B718",borderTop:"none",borderRadius:"0 0 10px 10px",padding:"10px 12px",display:"flex",flexDirection:"column",gap:7}}>
+        {tips.map((t,i)=>(
+          <div key={i} style={{display:"flex",gap:9,alignItems:"flex-start",background:"#ffffff06",borderRadius:9,padding:"8px 10px"}}>
+            <span style={{fontSize:15,flexShrink:0,marginTop:1}}>{t.icon}</span>
+            <div style={{fontSize:11,color:"#aaa",lineHeight:1.55}}>{t.tip}</div>
+          </div>
+        ))}
+      </div>}
+    </div>}
+    {showMindfulness&&<div style={{marginTop:8}}>
+      <button onClick={()=>setShowMindPanel(v=>!v)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#F9A8D410",border:"1px solid #F9A8D425",borderRadius:10,padding:"9px 13px",cursor:"pointer",color:"#F9A8D4",fontWeight:700,fontSize:12}}>
+        <span>🧘 Mindfulness Toolkit</span>
+        <span style={{fontSize:10,color:"#555"}}>{showMindPanel?"▲ hide":"▼ show"}</span>
+      </button>
+      {showMindPanel&&<div style={{background:"#F9A8D408",border:"1px solid #F9A8D418",borderTop:"none",borderRadius:"0 0 10px 10px",padding:"10px 12px",display:"flex",flexDirection:"column",gap:7}}>
+        {mindfulnessTips.map((t,i)=>(
+          <div key={i} style={{display:"flex",gap:9,alignItems:"flex-start",background:"#ffffff06",borderRadius:9,padding:"8px 10px"}}>
+            <span style={{fontSize:15,flexShrink:0,marginTop:1}}>{t.icon}</span>
+            <div style={{fontSize:11,color:"#aaa",lineHeight:1.55}}>{t.tip}</div>
+          </div>
+        ))}
+      </div>}
+    </div>}
+  </div>;
+};
+
+// ── SLEEP TAB ──
+const SLEEP_COL="#93C5FD";
+const ALL_SLEEP_TIPS=[
+  {icon:"🌙",category:"Routine",title:"Lock in a bedtime",body:"Pick a consistent bedtime and wake time — even on weekends. Your circadian clock is a habit engine; it thrives on regularity."},
+  {icon:"📵",category:"Environment",title:"Phone-free bedroom",body:"Blue light from screens delays melatonin production by up to 2 hours. Charge your phone outside the bedroom or use Night Shift from 8pm."},
+  {icon:"🌡️",category:"Environment",title:"Cool your room down",body:"Core body temperature must drop ~1°C to trigger deep sleep. Keep your room between 16–19°C. A cool room is one of the most powerful sleep levers."},
+  {icon:"☕",category:"Nutrition",title:"Caffeine curfew: 2pm",body:"Caffeine's half-life is 5–6 hours — a 3pm coffee is still half-active at 9pm. For sensitive people, even a 12pm cutoff makes a noticeable difference."},
+  {icon:"🍷",category:"Nutrition",title:"Alcohol disrupts deep sleep",body:"Alcohol may help you fall asleep but it fragments REM sleep and reduces deep sleep by up to 20%. It's a sedative, not a sleep aid."},
+  {icon:"🚿",category:"Routine",title:"Warm shower 1–2h before bed",body:"A warm shower causes your blood vessels to dilate, rapidly dropping core body temp afterward — the exact signal your brain needs to initiate sleep."},
+  {icon:"🧘",category:"Mindfulness",title:"4-7-8 breathing",body:"Inhale for 4 seconds, hold for 7, exhale slowly for 8. This activates your parasympathetic nervous system and reliably reduces sleep-onset time."},
+  {icon:"✍️",category:"Mindfulness",title:"Brain dump before bed",body:"Write down tomorrow's tasks and any lingering thoughts before you sleep. Studies show this offloads mental load and reduces time to fall asleep by ~9 minutes."},
+  {icon:"🏃",category:"Movement",title:"Exercise — but not too late",body:"Regular exercise improves deep sleep quality significantly. Aim to finish intense workouts by 6pm; even a 20-min evening walk is beneficial."},
+  {icon:"🌅",category:"Routine",title:"Morning light first thing",body:"Get natural light within 30 minutes of waking. This anchors your circadian rhythm, making it easier to feel sleepy at the right time at night."},
+  {icon:"😴",category:"Science",title:"You need 7–9 hours",body:"Adults who consistently get under 6 hours show measurably impaired cognition, increased injury risk, and elevated cortisol. There's no such thing as 'sleep training' to need less."},
+  {icon:"🫀",category:"Science",title:"Sleep debt is real",body:"You can't fully 'catch up' on lost sleep. Chronic short sleep accumulates a physiological debt — one lie-in won't fix a week of 5-hour nights."},
+];
+
+const WIND_DOWN=[
+  {time:"60 min",icon:"📵",action:"Put your phone on charge outside the bedroom"},
+  {time:"45 min",icon:"🚿",action:"Warm shower or bath"},
+  {time:"30 min",icon:"📖",action:"Light reading, journalling, or gentle stretching"},
+  {time:"15 min",icon:"🌡️",action:"Lower thermostat, close blinds, prepare your room"},
+  {time:"10 min",icon:"🧘",action:"4-7-8 breathing or a quick body scan meditation"},
+  {time:"Bedtime",icon:"🌙",action:"Lights off — no scrolling"},
+];
+
+const SleepTab=({cu,lastCheckin})=>{
+  const [history,setHistory]=useState([]);
+  const [activeCategory,setActiveCategory]=useState("All");
+  useEffect(()=>{
+    supabase.from('checkins').select('sleep,sleep_hours,created_at').eq('user_id',cu.id)
+      .order('created_at',{ascending:false}).limit(14)
+      .then(({data})=>{ if(data?.length) setHistory([...data].reverse()); });
+  },[cu.id]);
+
+  const avgHrs=history.length?+(history.reduce((a,c)=>a+(c.sleep_hours||0),0)/history.length).toFixed(1):null;
+  const avgQ=history.length?+(history.reduce((a,c)=>a+(c.sleep||0),0)/history.length).toFixed(1):null;
+  const categories=["All",...[...new Set(ALL_SLEEP_TIPS.map(t=>t.category))]];
+  const filtered=activeCategory==="All"?ALL_SLEEP_TIPS:ALL_SLEEP_TIPS.filter(t=>t.category===activeCategory);
+
+  return<div>
+    {/* Header */}
+    <div style={{background:"linear-gradient(135deg,#93C5FD15,#6EE7B710)",border:"1px solid #93C5FD25",borderRadius:14,padding:"16px 16px 14px",marginBottom:12}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+        <span style={{fontSize:26}}>😴</span>
+        <div>
+          <div style={{fontWeight:800,fontSize:18,color:SLEEP_COL}}>Sleep Centre</div>
+          <div style={{fontSize:11,color:"#666"}}>Track, learn & optimise your sleep</div>
+        </div>
+      </div>
+      {avgHrs&&<div style={{display:"flex",gap:8,marginTop:10}}>
+        <div style={{flex:1,background:"#ffffff08",borderRadius:10,padding:"10px 12px",textAlign:"center"}}>
+          <div style={{fontSize:20,fontWeight:900,color:SLEEP_COL}}>{avgHrs}h</div>
+          <div style={{fontSize:9,color:"#666",marginTop:2}}>avg hours (14d)</div>
+          <div style={{fontSize:9,color:avgHrs>=7?"#6EE7B7":"#F87171",fontWeight:700,marginTop:2}}>{avgHrs>=8?"Great":avgHrs>=7?"Good":avgHrs>=6?"Below avg":"Too low"}</div>
+        </div>
+        <div style={{flex:1,background:"#ffffff08",borderRadius:10,padding:"10px 12px",textAlign:"center"}}>
+          <div style={{fontSize:20,fontWeight:900,color:SLEEP_COL}}>{avgQ}/5</div>
+          <div style={{fontSize:9,color:"#666",marginTop:2}}>avg quality (14d)</div>
+          <div style={{fontSize:9,color:avgQ>=4?"#6EE7B7":avgQ>=3?"#FCD34D":"#F87171",fontWeight:700,marginTop:2}}>{avgQ>=4?"Excellent":avgQ>=3?"Okay":"Needs work"}</div>
+        </div>
+        <div style={{flex:1,background:"#ffffff08",borderRadius:10,padding:"10px 12px",textAlign:"center"}}>
+          <div style={{fontSize:20,fontWeight:900,color:SLEEP_COL}}>{history.filter(c=>c.sleep_hours>=7).length}</div>
+          <div style={{fontSize:9,color:"#666",marginTop:2}}>good nights (14d)</div>
+          <div style={{fontSize:9,color:"#6EE7B7",fontWeight:700,marginTop:2}}>≥7 hours</div>
+        </div>
+      </div>}
+    </div>
+
+    {/* Sleep history bars */}
+    {history.length>0&&<div className="card" style={{marginBottom:12}}>
+      <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>📊 Sleep History</div>
+      <div style={{display:"flex",gap:3,alignItems:"flex-end",height:60}}>
+        {history.slice(-10).map((c,i)=>{
+          const h=c.sleep_hours||0;
+          const pct=Math.min(1,h/9);
+          const col=h>=8?"#6EE7B7":h>=7?SLEEP_COL:h>=6?"#FCD34D":"#F87171";
+          return<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+            <div style={{width:"100%",borderRadius:"3px 3px 0 0",background:col,height:`${Math.max(4,pct*52)}px`,transition:"height .4s"}}/>
+            <div style={{fontSize:7,color:"#555"}}>{new Date(c.created_at).toLocaleDateString('en',{weekday:'short'})}</div>
+          </div>;
+        })}
+      </div>
+      <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+        {[["#6EE7B7","8h+"],["#93C5FD","7–8h"],["#FCD34D","6–7h"],["#F87171","<6h"]].map(([c,l])=>(
+          <div key={l} style={{display:"flex",alignItems:"center",gap:3}}><div style={{width:8,height:8,borderRadius:2,background:c}}/><span style={{fontSize:9,color:"#666"}}>{l}</span></div>
+        ))}
+      </div>
+    </div>}
+
+    {/* Tonight's wind-down routine */}
+    <div className="card" style={{marginBottom:12}}>
+      <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>🌙 Tonight's Wind-Down Routine</div>
+      <div style={{fontSize:11,color:"#666",marginBottom:10}}>Follow this in the hour before bed</div>
+      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {WIND_DOWN.map((step,i)=>(
+          <div key={i} style={{display:"flex",gap:10,alignItems:"center",background:"#ffffff06",borderRadius:9,padding:"9px 11px"}}>
+            <div style={{minWidth:52,fontSize:9,color:SLEEP_COL,fontWeight:700,textAlign:"center",background:"#93C5FD15",borderRadius:6,padding:"3px 4px"}}>{step.time}</div>
+            <span style={{fontSize:16,flexShrink:0}}>{step.icon}</span>
+            <div style={{fontSize:11,color:"#bbb",lineHeight:1.4}}>{step.action}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Tips library */}
+    <div className="card" style={{marginBottom:12}}>
+      <div style={{fontWeight:700,fontSize:13,marginBottom:8}}>💡 Sleep Tips Library</div>
+      <div style={{display:"flex",gap:5,marginBottom:10,overflowX:"auto",paddingBottom:2}}>
+        {categories.map(c=>(
+          <button key={c} onClick={()=>setActiveCategory(c)} style={{flexShrink:0,padding:"5px 12px",borderRadius:20,border:`1px solid ${activeCategory===c?SLEEP_COL+"55":"#ffffff15"}`,background:activeCategory===c?"#93C5FD20":"transparent",color:activeCategory===c?SLEEP_COL:"#666",fontSize:10,fontWeight:activeCategory===c?700:400,cursor:"pointer"}}>{c}</button>
+        ))}
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {filtered.map((t,i)=>(
+          <div key={i} style={{background:"#ffffff06",borderRadius:11,padding:"11px 13px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
+              <span style={{fontSize:18}}>{t.icon}</span>
+              <div>
+                <div style={{fontWeight:700,fontSize:12,color:"#ddd"}}>{t.title}</div>
+                <div style={{fontSize:9,color:SLEEP_COL,fontWeight:600}}>{t.category}</div>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:"#999",lineHeight:1.6}}>{t.body}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {/* Science callout */}
+    <div style={{background:"linear-gradient(135deg,#93C5FD10,#6EE7B708)",border:"1px solid #93C5FD20",borderRadius:12,padding:"13px 14px",marginBottom:12}}>
+      <div style={{fontWeight:700,fontSize:12,color:SLEEP_COL,marginBottom:6}}>🔬 Why Sleep Is Non-Negotiable</div>
+      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {[
+          ["🧠","Memory & learning","Deep sleep consolidates everything you learned that day into long-term memory."],
+          ["💪","Muscle & tissue repair","Growth hormone is released almost exclusively during deep sleep — critical for recovery."],
+          ["🛡️","Immune function","Even one night of poor sleep reduces natural killer cell activity by up to 70%."],
+          ["❤️","Heart health","Chronic short sleep (< 6h) raises cardiovascular disease risk by 48%."],
+          ["⚖️","Weight & metabolism","Sleep deprivation spikes ghrelin (hunger hormone) and drops leptin (satiety) — making overeating almost inevitable."],
+        ].map(([icon,title,body],i)=>(
+          <div key={i} style={{display:"flex",gap:9,alignItems:"flex-start"}}>
+            <span style={{fontSize:14,flexShrink:0,marginTop:1}}>{icon}</span>
+            <div><span style={{fontSize:11,fontWeight:700,color:"#ccc"}}>{title} — </span><span style={{fontSize:11,color:"#888",lineHeight:1.5}}>{body}</span></div>
+          </div>
+        ))}
       </div>
     </div>
   </div>;
@@ -554,22 +765,158 @@ const AiTab=({challenges,setChallenges,notify,cu})=>{
   return<div><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><span style={{fontWeight:700,fontSize:17}}>✨ AI Challenges</span><Pill color="#C4B5FD" text="CLAUDE"/></div><div style={{fontSize:12,color:"#888",marginBottom:14}}>Describe your team's goals and get challenge ideas instantly.</div><div style={{background:"#ffffff08",border:"1px solid #ffffff12",borderRadius:16,padding:16,marginBottom:14}}><div style={{fontWeight:700,marginBottom:8,fontSize:12}}>Quick prompts</div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:10}}>{QP.map(p=><button key={p} onClick={()=>setPrompt(p)} style={{background:prompt===p?"#C4B5FD22":"transparent",border:`1px solid ${prompt===p?"#C4B5FD55":"#ffffff15"}`,borderRadius:20,padding:"4px 10px",fontSize:11,color:prompt===p?"#C4B5FD":"#888",fontWeight:prompt===p?700:400}}>{p}</button>)}</div><textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Or describe your own…" rows={3} style={{resize:"none",width:"100%",marginBottom:10}}/><button onClick={gen} disabled={loading||!prompt.trim()} style={{width:"100%",padding:"11px",borderRadius:10,border:"1px solid #C4B5FD33",background:prompt.trim()?"#C4B5FD22":"#ffffff08",color:prompt.trim()?"#C4B5FD":"#555",fontWeight:700,fontSize:13}}>{loading?"✨ Generating…":"✨ Generate Ideas"}</button>{err&&<div style={{marginTop:8,fontSize:12,color:"#F9A8D4",textAlign:"center"}}>{err}</div>}</div>{sugg.map((s,i)=><div key={i} style={{background:"#ffffff08",border:`1px solid ${s.color}33`,borderRadius:16,padding:16,marginBottom:10}}><div style={{display:"flex",gap:10,alignItems:"flex-start"}}><div style={{width:44,height:44,borderRadius:12,background:`${s.color}20`,border:`1px solid ${s.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{s.icon}</div><div style={{flex:1}}><div style={{display:"flex",gap:6,alignItems:"center",marginBottom:3}}><span style={{fontWeight:700,color:s.color}}>{s.title}</span><Pill color={dc[s.difficulty]||"#888"} text={s.difficulty}/></div><div style={{fontSize:12,color:"#888",marginBottom:4}}>{s.desc}</div><div style={{fontSize:11,color:"#666"}}>🎯 {s.goal?.toLocaleString()} {s.unit}</div></div></div><button onClick={()=>launch(s,i)} disabled={done[i]} style={{marginTop:10,width:"100%",background:done[i]?"#6EE7B722":`${s.color}18`,border:`1px solid ${done[i]?"#6EE7B744":s.color+"44"}`,color:done[i]?"#6EE7B7":s.color,padding:"8px",borderRadius:9,fontWeight:700,fontSize:12,opacity:done[i]?.7:1}}>{done[i]?"✅ Launched!":"🚀 Launch"}</button></div>)}{!loading&&sugg.length===0&&<div style={{textAlign:"center",padding:"36px 0",color:"#555"}}><div style={{fontSize:40,marginBottom:10}}>✨</div><div style={{fontSize:13}}>Pick a prompt or write your own above.</div></div>}</div>;
 };
 
+// ── CHALLENGE INTRO MODAL ──
+const CHALLENGE_RESEARCH={
+  steps:{icon:"🦶",headline:"Walking is the most underrated medicine.",fact:"Research published in JAMA shows that every 1,000 extra steps per day is associated with a 15% reduction in cardiovascular mortality. Just 7,500 steps/day is enough to significantly cut premature death risk — no gym required.",stat:"7,500 steps cuts mortality risk by up to 36%",source:"JAMA Internal Medicine, 2019"},
+  hydration:{icon:"💧",headline:"Dehydration hits your brain before your body.",fact:"Even mild dehydration (just 1–2% body weight loss) impairs concentration, short-term memory and reaction time. A 2011 study found dehydrated workers made significantly more errors on cognitive tasks. Most office workers are chronically under-hydrated.",stat:"1–2% dehydration impairs cognition by up to 20%",source:"Journal of Nutrition, 2011"},
+  stretch:{icon:"🧘",headline:"Sitting still is slowly injuring your body.",fact:"Prolonged sitting increases disc pressure in your spine by up to 40% compared to standing. Regular desk stretching reduces musculoskeletal pain by 72% in office workers and lowers sick leave by 28%, according to a systematic review of workplace intervention studies.",stat:"Desk stretching reduces pain by 72% in office workers",source:"Journal of Occupational Health, 2020"},
+  posture:{icon:"🪑",headline:"Poor posture is costing your team more than you think.",fact:"Forward head posture (common from screen use) adds up to 27kg of force on the cervical spine for every inch the head moves forward. This leads to neck pain, headaches and fatigue — the #1 cause of presenteeism in office environments.",stat:"60% of office workers report neck/shoulder pain from posture",source:"Applied Ergonomics, 2018"},
+  sleep:{icon:"😴",headline:"Sleep is when your body does its repair work.",fact:"A landmark study of 10,000 workers found that poor sleep costs employers an average of 11 lost productivity days per employee per year. Just one extra hour of sleep per night is associated with a 16% wage increase — because cognitive performance improves that significantly.",stat:"Poor sleep costs 11 productivity days per employee per year",source:"Sleep, Harvard Medical School, 2011"},
+  mindfulness:{icon:"🧠",headline:"Two minutes of breathing changes your brain chemistry.",fact:"A 2018 meta-analysis of 47 trials found mindfulness reduces anxiety by 38% and depression symptoms by 30% in workplace settings. Even brief breathing exercises activate the parasympathetic nervous system within 90 seconds, reducing cortisol measurably.",stat:"Mindfulness reduces workplace anxiety by 38%",source:"JAMA Internal Medicine meta-analysis, 2018"},
+  water:{icon:"💧",headline:"Dehydration hits your brain before your body.",fact:"Even mild dehydration (just 1–2% body weight loss) impairs concentration, short-term memory and reaction time. A 2011 study found dehydrated workers made significantly more errors on cognitive tasks. Most office workers are chronically under-hydrated.",stat:"1–2% dehydration impairs cognition by up to 20%",source:"Journal of Nutrition, 2011"},
+  walk:{icon:"🦶",headline:"Walking is the most underrated medicine.",fact:"Research published in JAMA shows that every 1,000 extra steps per day is associated with a 15% reduction in cardiovascular mortality. Just 7,500 steps/day is enough to significantly cut premature death risk — no gym required.",stat:"7,500 steps cuts mortality risk by up to 36%",source:"JAMA Internal Medicine, 2019"},
+  movement:{icon:"🏃",headline:"Movement breaks rewire your energy levels.",fact:"Sedentary bouts longer than 30 minutes cause measurable drops in insulin sensitivity and energy. A University of Queensland study found that taking a 2-minute walk every 20 minutes reduced blood sugar spikes by 30% and significantly improved afternoon energy and focus.",stat:"2-min movement breaks every 20 mins reduce blood sugar by 30%",source:"Diabetes Care, University of Queensland, 2014"},
+  exercise:{icon:"💪",headline:"Exercise is the single most effective stress drug.",fact:"30 minutes of moderate exercise produces the same anxiety-reduction effect as 400mg of diazepam (Valium), without the side effects. It also increases BDNF — the brain's growth hormone — improving memory, focus and resilience to workplace stress.",stat:"Exercise reduces anxiety as effectively as anti-anxiety medication",source:"Frontiers in Psychiatry, 2019"},
+  eye:{icon:"👁️",headline:"Your eyes weren't built for screens.",fact:"The average office worker blinks 66% less while using a screen. The 20-20-20 rule (every 20 min, look 20 feet away for 20 sec) reduces digital eye strain by up to 62%. Unmanaged eye strain causes headaches, blurred vision and fatigue that compound through the day.",stat:"Screen users blink 66% less — causing chronic eye strain",source:"American Optometric Association, 2020"},
+  default:{icon:"👩‍⚕️",headline:"Small habits compound into major health outcomes.",fact:"Behavioural science shows that habit stacking — attaching a new behaviour to an existing routine — increases follow-through by 248% compared to motivation-based approaches alone. A week of consistent effort is enough to start wiring a new neural pathway.",stat:"Habit stacking increases follow-through by 248%",source:"British Journal of General Practice, 2012"},
+};
+const getChallengeResearch=(challenge)=>{
+  const t=(challenge.title||"").toLowerCase();
+  const keys=Object.keys(CHALLENGE_RESEARCH).filter(k=>k!=="default");
+  const match=keys.find(k=>t.includes(k));
+  return CHALLENGE_RESEARCH[match||"default"];
+};
+const ChallengeIntroModal=({challenge,onDone})=>{
+  const [slide,setSlide]=useState(0);
+  const research=getChallengeResearch(challenge);
+  const slides=[
+    {icon:challenge.icon||"🏆",title:"This week's challenge",body:challenge.title,sub:"Your team has a new weekly challenge. Here's what it's all about.",color:challenge.color||"#6EE7B7"},
+    {
+      icon:research.icon,title:"Why this matters",
+      body:research.headline,
+      sub:challenge.physio_note||research.fact,
+      extra:{stat:research.stat,source:research.source},
+      color:"#93C5FD"
+    },
+    {icon:"📊",title:"How to complete it",body:challenge.type==="habit"?"Check it off each day to build the streak. Small steps compound into big changes.":challenge.goal?`Log your progress daily. The goal is ${challenge.goal.toLocaleString()} ${challenge.unit||"points"} by the end of the week.`:"Log your activity daily and watch your progress grow.",sub:"You can log from the Home tab anytime.",color:"#F9A8D4"},
+    {icon:"🚀",title:"You're all set!",body:"Let's do this. Your team is counting on you.",sub:"Good luck this week 💪",color:"#FCD34D"},
+  ];
+  const s=slides[slide];
+  const isLast=slide===slides.length-1;
+  return<div style={{position:"fixed",inset:0,background:"#000d",zIndex:950,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+    <div style={{background:"#13131f",border:`1px solid ${s.color}33`,borderRadius:22,padding:28,width:340,maxWidth:"95vw",textAlign:"center"}}>
+      <div style={{fontSize:56,marginBottom:16}}>{s.icon}</div>
+      <div style={{fontSize:11,fontWeight:700,color:s.color,letterSpacing:2,marginBottom:8,textTransform:"uppercase"}}>{s.title}</div>
+      <div style={{fontWeight:800,fontSize:20,color:"#e8e8f0",marginBottom:10,lineHeight:1.3}}>{s.body}</div>
+      <div style={{fontSize:13,color:"#999",lineHeight:1.65,marginBottom:s.extra?12:24}}>{s.sub}</div>
+      {s.extra&&<div style={{background:"#ffffff08",border:"1px solid #ffffff12",borderRadius:12,padding:"10px 14px",marginBottom:24,textAlign:"left"}}>
+        <div style={{fontSize:12,fontWeight:700,color:s.color,marginBottom:3}}>📊 {s.extra.stat}</div>
+        <div style={{fontSize:10,color:"#555"}}>Source: {s.extra.source}</div>
+      </div>}
+      <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:20}}>
+        {slides.map((_,i)=><div key={i} style={{width:i===slide?22:7,height:7,borderRadius:4,background:i===slide?s.color:"#ffffff18",transition:"all .25s"}}/>)}
+      </div>
+      <button onClick={()=>isLast?onDone():setSlide(s=>s+1)} style={{width:"100%",padding:"13px",borderRadius:12,border:"none",background:`linear-gradient(135deg,${s.color},${s.color}bb)`,color:"#080810",fontWeight:800,fontSize:15,cursor:"pointer"}}>
+        {isLast?"Let's go! 🎉":"Next →"}
+      </button>
+      {slide>0&&<button onClick={()=>setSlide(s=>s-1)} style={{marginTop:8,background:"transparent",border:"none",color:"#555",fontSize:12,cursor:"pointer"}}>← Back</button>}
+    </div>
+  </div>;
+};
+
 // ── FEED TAB ──
+// ── KUDOS MODAL ──
+const KudosModal=({cu,users,onClose,onSent})=>{
+  const [receiver,setReceiver]=useState("");
+  const [message,setMessage]=useState("");
+  const [emoji,setEmoji]=useState("🙌");
+  const [sending,setSending]=useState(false);
+  const KUDOS_EMOJIS=["🙌","🔥","💪","⭐","❤️","🎉","👏","🏆"];
+  const teammates=users.filter(u=>u.id!==cu.id);
+
+  const send=async()=>{
+    if(!receiver||!message.trim())return;
+    setSending(true);
+    const{error}=await supabase.from('kudos').insert({sender_id:cu.id,receiver_id:receiver,message:message.trim(),emoji,company_id:cu.company_id});
+    if(!error){onSent({id:Date.now(),sender_id:cu.id,receiver_id:receiver,message:message.trim(),emoji,created_at:new Date().toISOString()});onClose();}
+    setSending(false);
+  };
+
+  return<div style={{position:"fixed",inset:0,background:"#000000aa",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div style={{width:"100%",maxWidth:360,background:"#13131f",border:"1px solid #ffffff18",borderRadius:18,padding:22}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div style={{fontWeight:800,fontSize:15}}>🙌 Give Kudos</div>
+        <button onClick={onClose} style={{background:"transparent",border:"none",color:"#888",fontSize:18,cursor:"pointer"}}>✕</button>
+      </div>
+      <div style={{fontSize:11,color:"#888",marginBottom:6}}>Who deserves a shoutout?</div>
+      <select value={receiver} onChange={e=>setReceiver(e.target.value)} style={{width:"100%",background:"#ffffff0a",border:"1px solid #ffffff18",borderRadius:10,padding:"10px 12px",color:receiver?"#e8e8f0":"#555",fontSize:13,marginBottom:12,outline:"none",boxSizing:"border-box"}}>
+        <option value="">Select a teammate…</option>
+        {teammates.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
+      </select>
+      <div style={{fontSize:11,color:"#888",marginBottom:6}}>Pick an emoji</div>
+      <div style={{display:"flex",gap:6,marginBottom:12}}>
+        {KUDOS_EMOJIS.map(e=><button key={e} onClick={()=>setEmoji(e)} style={{flex:1,padding:"7px 0",borderRadius:9,border:`1px solid ${emoji===e?"#6EE7B755":"#ffffff15"}`,background:emoji===e?"#6EE7B720":"#ffffff08",fontSize:16,cursor:"pointer"}}>{e}</button>)}
+      </div>
+      <div style={{fontSize:11,color:"#888",marginBottom:6}}>Your message</div>
+      <textarea value={message} onChange={e=>setMessage(e.target.value)} placeholder="Crushed that hydration challenge this week! 💧" rows={3} style={{width:"100%",background:"#ffffff0a",border:"1px solid #ffffff18",borderRadius:10,padding:"10px 12px",color:"#e8e8f0",fontSize:13,resize:"none",outline:"none",boxSizing:"border-box",marginBottom:14}}/>
+      <button onClick={send} disabled={sending||!receiver||!message.trim()} style={{width:"100%",background:"linear-gradient(135deg,#6EE7B7,#93C5FD)",color:"#080810",border:"none",borderRadius:11,padding:"12px",fontWeight:800,fontSize:14,cursor:"pointer",opacity:(!receiver||!message.trim())?0.4:1}}>
+        {sending?"Sending…":`Send Kudos ${emoji}`}
+      </button>
+    </div>
+  </div>;
+};
+
+// ── KUDOS CARD (in feed) ──
+const KudosCard=({kudos,users})=>{
+  const sender=users.find(u=>u.id===kudos.sender_id)||{name:"Someone",color:"#6EE7B7"};
+  const receiver=users.find(u=>u.id===kudos.receiver_id)||{name:"a teammate",color:"#93C5FD"};
+  return<div className="card" style={{marginBottom:10,background:"linear-gradient(135deg,#6EE7B710,#93C5FD08)",borderColor:"#6EE7B730",padding:"12px 14px"}}>
+    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+      <Av u={sender} s={28}/>
+      <div style={{flex:1}}>
+        <div style={{fontSize:12,color:"#aaa"}}>
+          <span style={{fontWeight:700,color:sender.color}}>{sender.name?.split(" ")[0]}</span>
+          {" gave kudos to "}
+          <span style={{fontWeight:700,color:receiver.color}}>{receiver.name?.split(" ")[0]}</span>
+        </div>
+        <div style={{fontSize:10,color:"#555"}}>{ago(new Date(kudos.created_at).getTime())}</div>
+      </div>
+      <span style={{fontSize:22}}>{kudos.emoji}</span>
+    </div>
+    <div style={{background:"#ffffff08",borderRadius:10,padding:"9px 12px",fontSize:13,color:"#ccc",lineHeight:1.5,fontStyle:"italic"}}>"{kudos.message}"</div>
+  </div>;
+};
+
 const FeedTab=({feed,setFeed,challenges,users,cu,notify,tips=[]})=>{
   const [ct,setCt]=useState({});
   const [expanded,setExpanded]=useState({});
+  const [kudosList,setKudosList]=useState([]);
+  const [showKudos,setShowKudos]=useState(false);
   const react=(pid,emoji)=>setFeed(f=>f.map(p=>{if(p.id!==pid)return p;const cur=p.rx[emoji]||[],has=cur.includes(cu.id);return{...p,rx:{...p.rx,[emoji]:has?cur.filter(x=>x!==cu.id):[...cur,cu.id]}};}));
   const comment=pid=>{const t=ct[pid];if(!t?.trim())return;setFeed(f=>f.map(p=>p.id!==pid?p:{...p,comments:[...p.comments,{uid:cu.id,text:t}]}));setCt(c=>({...c,[pid]:""}));};
   const toggle=pid=>setExpanded(e=>({...e,[pid]:!e[pid]}));
 
+  useEffect(()=>{
+    if(!cu?.company_id)return;
+    supabase.from('kudos').select('*').eq('company_id',cu.company_id).order('created_at',{ascending:false}).limit(30)
+      .then(({data})=>{ if(data) setKudosList(data); });
+  },[cu?.company_id]);
+
   const items=[
     ...tips.map(t=>({...t,_kind:"tip",_ts:new Date(t.created_at).getTime()||0})),
-    ...feed.map(p=>({...p,_kind:"post",_ts:p.ts}))
+    ...feed.map(p=>({...p,_kind:"post",_ts:p.ts})),
+    ...kudosList.map(k=>({...k,_kind:"kudos",_ts:new Date(k.created_at).getTime()})),
   ].sort((a,b)=>b._ts-a._ts);
 
   return<div>
+    {showKudos&&<KudosModal cu={cu} users={users} onClose={()=>setShowKudos(false)} onSent={k=>setKudosList(l=>[k,...l])}/>}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+      <div style={{fontWeight:700,fontSize:15}}>Team Feed</div>
+      <button onClick={()=>setShowKudos(true)} style={{background:"linear-gradient(135deg,#6EE7B722,#93C5FD18)",border:"1px solid #6EE7B740",borderRadius:20,padding:"6px 14px",color:"#6EE7B7",fontWeight:700,fontSize:12,cursor:"pointer"}}>🙌 Give Kudos</button>
+    </div>
     {items.map(item=>{
       if(item._kind==="tip") return<TipCard key={`tip-${item.id}`} tip={item}/>;
+      if(item._kind==="kudos") return<KudosCard key={`kudos-${item.id}`} kudos={item} users={users}/>;
       const post=item;
       const u=users.find(x=>x.id===post.uid)||{name:"Unknown",color:"#888"};
       const ch=challenges.find(x=>String(x.id)===String(post.cid));
@@ -1281,19 +1628,132 @@ const SymptomLogSection=({cu,notify})=>{
 };
 
 // ── PROFILE TAB ──
+// ── MY PROGRESS DASHBOARD ──
+const MyProgressCard=({cu,lb})=>{
+  const [checkins,setCheckins]=useState([]);
+  const [showDetails,setShowDetails]=useState(false);
+  useEffect(()=>{
+    supabase.from('checkins').select('*').eq('user_id',cu.id)
+      .order('created_at',{ascending:false}).limit(30)
+      .then(({data})=>{ if(data?.length) setCheckins(data); });
+  },[cu.id]);
+  if(!checkins.length) return null;
+
+  const recent=checkins.slice(0,14);
+  const prev=checkins.slice(14,28);
+
+  const avg=(arr,key)=>arr.length?+(arr.reduce((s,c)=>s+(c[key]||0),0)/arr.length).toFixed(1):null;
+  const avgSleepHrs=avg(recent,'sleep_hours');
+  const avgMood=avg(recent,'mood');
+  const avgEnergy=avg(recent,'energy');
+  const avgReadiness=recent.length?Math.round(recent.reduce((s,c)=>s+(c.readiness||0),0)/recent.length):null;
+  const avgWater=recent.length?Math.round(recent.reduce((s,c)=>s+(c.water_ml||0),0)/recent.length):null;
+
+  // Trend vs previous 14 days (+ / - / ~)
+  const trend=(curr,prv)=>{if(!prv||!curr)return null;const d=curr-prv;if(Math.abs(d)<0.2)return"~";return d>0?"↑":"↓";};
+  const trendCol=(curr,prv,higherIsBetter=true)=>{if(!prv||!curr)return"#888";const d=curr-prv;if(Math.abs(d)<0.2)return"#888";return(d>0)===higherIsBetter?"#6EE7B7":"#F87171";};
+
+  // Last 7 days check-in streak dots
+  const last7=Array.from({length:7},(_,i)=>{
+    const d=new Date();d.setDate(d.getDate()-i);
+    const ds=d.toDateString();
+    return checkins.some(c=>new Date(c.created_at).toDateString()===ds);
+  }).reverse();
+
+  const METRICS=[
+    {icon:"😴",label:"Avg Sleep",val:avgSleepHrs?`${avgSleepHrs}h`:null,col:"#93C5FD",tr:trend(avgSleepHrs,avg(prev,'sleep_hours')),trCol:trendCol(avgSleepHrs,avg(prev,'sleep_hours')),target:"7–9h",ok:avgSleepHrs>=7},
+    {icon:"⚡",label:"Avg Energy",val:avgEnergy?`${avgEnergy}/5`:null,col:"#FCD34D",tr:trend(avgEnergy,avg(prev,'energy')),trCol:trendCol(avgEnergy,avg(prev,'energy')),target:"4+/5",ok:avgEnergy>=4},
+    {icon:"😊",label:"Avg Mood",val:avgMood?`${avgMood}/5`:null,col:"#F9A8D4",tr:trend(avgMood,avg(prev,'mood')),trCol:trendCol(avgMood,avg(prev,'mood')),target:"4+/5",ok:avgMood>=4},
+    {icon:"💧",label:"Avg Water",val:avgWater?`${Math.round(avgWater/250)} glasses`:null,col:"#6EE7B7",tr:trend(avgWater,avg(prev,'water_ml')),trCol:trendCol(avgWater,avg(prev,'water_ml')),target:"8 glasses",ok:avgWater>=2000},
+  ];
+
+  const myLBEntry=lb.find(e=>e.uid===cu.id);
+  const myRank=lb.findIndex(e=>e.uid===cu.id)+1;
+
+  return<div className="card" style={{marginBottom:12,background:"linear-gradient(135deg,#6EE7B710,#93C5FD08)",borderColor:"#6EE7B730"}}>
+    <div style={{fontWeight:800,fontSize:15,marginBottom:12}}>📊 My Progress · last 14 days</div>
+
+    {/* Readiness score hero */}
+    {avgReadiness&&<div style={{display:"flex",alignItems:"center",gap:14,background:"#ffffff08",borderRadius:12,padding:"12px 14px",marginBottom:12}}>
+      <div style={{position:"relative",width:64,height:64,flexShrink:0}}>
+        <Ring pct={avgReadiness/100} color={readinessColor(avgReadiness)} size={64}/>
+        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:readinessColor(avgReadiness)}}>{avgReadiness}</div>
+      </div>
+      <div style={{flex:1}}>
+        <div style={{fontWeight:700,fontSize:14,color:readinessColor(avgReadiness)}}>{readinessLabel(avgReadiness)}</div>
+        <div style={{fontSize:11,color:"#888",marginTop:2}}>Average readiness score</div>
+        <div style={{fontSize:10,color:"#555",marginTop:4}}>Based on {recent.length} check-ins</div>
+      </div>
+      {myRank>0&&<div style={{textAlign:"center"}}>
+        <div style={{fontWeight:900,fontSize:20,color:"#6EE7B7"}}>#{myRank}</div>
+        <div style={{fontSize:9,color:"#555"}}>Rank</div>
+      </div>}
+    </div>}
+
+    {/* Quick stats row — always visible */}
+    <div style={{display:"flex",gap:7,marginBottom:10}}>
+      {METRICS.filter(m=>m.val).map(m=>(
+        <div key={m.label} style={{flex:1,background:"#ffffff07",borderRadius:10,padding:"8px 6px",textAlign:"center",border:`1px solid ${m.col}18`}}>
+          <div style={{fontSize:15}}>{m.icon}</div>
+          <div style={{fontWeight:800,fontSize:13,color:m.col,marginTop:2}}>{m.val}</div>
+          <div style={{fontSize:8,color:"#666",marginTop:1}}>{m.label}</div>
+          {m.tr&&<div style={{fontSize:9,color:m.trCol,fontWeight:700}}>{m.tr}</div>}
+        </div>
+      ))}
+    </div>
+
+    {/* Expand for full details */}
+    <button onClick={()=>setShowDetails(v=>!v)} style={{width:"100%",background:"#ffffff08",border:"1px solid #ffffff12",borderRadius:9,padding:"8px",fontSize:11,color:"#888",fontWeight:600,cursor:"pointer"}}>
+      {showDetails?"▲ Hide details":"▼ See full breakdown"}
+    </button>
+
+    {showDetails&&<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
+      {/* 7-day check-in dots */}
+      <div style={{background:"#ffffff07",borderRadius:11,padding:"10px 12px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <div style={{fontWeight:700,fontSize:12}}>🗓 This week's check-ins</div>
+          <div style={{fontSize:11,color:"#FCD34D",fontWeight:700}}>{last7.filter(Boolean).length}/7 days</div>
+        </div>
+        <div style={{display:"flex",gap:5}}>
+          {last7.map((done,i)=>{
+            const d=new Date();d.setDate(d.getDate()-(6-i));
+            return<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+              <div style={{width:"100%",aspectRatio:"1",borderRadius:7,background:done?"#6EE7B7":"#ffffff0f",border:`1px solid ${done?"#6EE7B755":"#ffffff10"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}}>{done?"✓":""}</div>
+              <div style={{fontSize:8,color:"#555"}}>{d.toLocaleDateString('en',{weekday:'short'})}</div>
+            </div>;
+          })}
+        </div>
+      </div>
+      {/* Points & streak */}
+      <div style={{display:"flex",gap:7}}>
+        <div style={{flex:1,background:"#FCD34D18",border:"1px solid #FCD34D22",borderRadius:10,padding:"9px 12px",textAlign:"center"}}>
+          <div style={{fontWeight:900,fontSize:18,color:"#FCD34D"}}>{cu.checkin_streak||0}🔥</div>
+          <div style={{fontSize:9,color:"#888",marginTop:1}}>Day streak</div>
+        </div>
+        <div style={{flex:1,background:"#93C5FD18",border:"1px solid #93C5FD22",borderRadius:10,padding:"9px 12px",textAlign:"center"}}>
+          <div style={{fontWeight:900,fontSize:18,color:"#93C5FD"}}>{(myLBEntry?.pts||0).toLocaleString()}</div>
+          <div style={{fontSize:9,color:"#888",marginTop:1}}>Total points</div>
+        </div>
+        <div style={{flex:1,background:"#6EE7B718",border:"1px solid #6EE7B722",borderRadius:10,padding:"9px 12px",textAlign:"center"}}>
+          <div style={{fontWeight:900,fontSize:18,color:"#6EE7B7"}}>{checkins.length}</div>
+          <div style={{fontSize:9,color:"#888",marginTop:1}}>Check-ins</div>
+        </div>
+      </div>
+    </div>}
+  </div>;
+};
+
 const ProfileTab=({cu,lb,pd,setPd,notify,checked,onCheckin,lastCheckin,badges,awardBadge})=>{const [nm,setNm]=useState(3);const myLB=lb.find(e=>e.uid===cu.id);const myR=lb.findIndex(e=>e.uid===cu.id)+1;
 const save=()=>{const today=new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"});setPd(p=>({...p,mood:[...p.mood.slice(-6),{date:today,val:nm}]}));setNm(3);notify("🔒 Saved!");};
 return<div>
-  {/* 🔒 Private daily check-in — only you see this */}
   {!checked&&<CheckIn onDone={onCheckin}/>}
   {checked&&lastCheckin&&<ReadinessCard checkin={lastCheckin}/>}
+  <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12}}><Av u={cu} s={50}/><div><div style={{fontWeight:800,fontSize:18}}>{cu.name}</div><div style={{fontSize:12,color:"#888"}}>{cu.role}{cu.is_admin?" · 👑 Admin":""}</div><div style={{fontSize:10,color:"#6EE7B7",marginTop:2}}>🔒 Private</div></div></div>
+  <MyProgressCard cu={cu} lb={lb}/>
+  <BadgesGrid badges={badges||[]} cu={cu}/>
   <ErgonomicsCheck cu={cu} notify={notify} awardBadge={awardBadge}/>
-  <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14}}><Av u={cu} s={50}/><div><div style={{fontWeight:800,fontSize:18}}>{cu.name}</div><div style={{fontSize:12,color:"#888"}}>{cu.role}{cu.is_admin?" · 👑 Admin":""}</div><div style={{fontSize:10,color:"#6EE7B7",marginTop:2}}>🔒 Private</div></div></div>
-<div style={{display:"flex",gap:7,marginBottom:10}}>{[["#"+(myR||"–"),"Rank","#6EE7B7"],[(cu.checkin_streak||0)+"🔥","Streak","#FCD34D"],[(myLB?.pts||0).toLocaleString(),"Points","#93C5FD"]].map(([v,l,c])=><div key={l} className="card" style={{flex:1,textAlign:"center",padding:12}}><div style={{fontWeight:800,fontSize:16,color:c}}>{v}</div><div style={{fontSize:10,color:"#888"}}>{l}</div></div>)}</div>
-<ReadinessHistoryCard cu={cu}/>
-<BadgesGrid badges={badges||[]} cu={cu}/><div className="card" style={{marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><div style={{fontWeight:700,fontSize:13}}>😊 Mood</div><div style={{fontSize:12,color:"#F9A8D4",fontWeight:700}}>{pd.mood[pd.mood.length-1]?.val}/5</div></div><Spk sid="md" data={pd.mood} color="#F9A8D4"/></div>
-<SymptomLogSection cu={cu} notify={notify}/>
-<div className="card"><div style={{fontWeight:700,marginBottom:12}}>Log Mood</div><div style={{fontSize:11,color:"#888",marginBottom:6}}>Today's mood: <span style={{color:"#F9A8D4",fontWeight:700}}>{["😔","😕","😐","🙂","😄"][nm-1]}</span></div><div style={{display:"flex",gap:4,marginBottom:12}}>{[1,2,3,4,5].map(v=><button key={v} onClick={()=>setNm(v)} style={{flex:1,padding:"6px 0",borderRadius:9,border:`1px solid ${nm===v?"#F9A8D455":"#ffffff15"}`,background:nm===v?"#F9A8D420":"transparent",fontSize:15}}>{["😔","😕","😐","🙂","😄"][v-1]}</button>)}</div><button onClick={save} style={{width:"100%",background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",border:"1px solid #6EE7B755",color:"#6EE7B7",padding:"11px",borderRadius:11,fontWeight:700}}>🔒 Save Privately</button></div>
+  <SymptomLogSection cu={cu} notify={notify}/>
+  <div className="card"><div style={{fontWeight:700,marginBottom:12}}>Log Mood</div><div style={{fontSize:11,color:"#888",marginBottom:6}}>Today's mood: <span style={{color:"#F9A8D4",fontWeight:700}}>{["😔","😕","😐","🙂","😄"][nm-1]}</span></div><div style={{display:"flex",gap:4,marginBottom:12}}>{[1,2,3,4,5].map(v=><button key={v} onClick={()=>setNm(v)} style={{flex:1,padding:"6px 0",borderRadius:9,border:`1px solid ${nm===v?"#F9A8D455":"#ffffff15"}`,background:nm===v?"#F9A8D420":"transparent",fontSize:15}}>{["😔","😕","😐","🙂","😄"][v-1]}</button>)}</div><button onClick={save} style={{width:"100%",background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",border:"1px solid #6EE7B755",color:"#6EE7B7",padding:"11px",borderRadius:11,fontWeight:700}}>🔒 Save Privately</button></div>
 </div>;};
 
 // ── ADMIN TAB ──
@@ -1659,14 +2119,79 @@ const TeamDashboard=({team,members,feed,cu,challenges,onBack,notify,session})=>{
   </div>;
 };
 
+const PhysioQnA=({cu,notify})=>{
+  const [qs,setQs]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [answers,setAnswers]=useState({});
+  const [saving,setSaving]=useState({});
+
+  useEffect(()=>{
+    supabase.from('physio_questions').select('*, profiles(name,color)')
+      .eq('company_id',cu.company_id).order('created_at',{ascending:false})
+      .then(({data})=>{ setQs(data||[]); setLoading(false); });
+  },[cu.company_id]);
+
+  const sendAnswer=async(q)=>{
+    const ans=answers[q.id]?.trim();
+    if(!ans)return;
+    setSaving(s=>({...s,[q.id]:true}));
+    const{error}=await supabase.from('physio_questions').update({answer:ans,answered_at:new Date().toISOString()}).eq('id',q.id);
+    if(!error){
+      setQs(prev=>prev.map(x=>x.id===q.id?{...x,answer:ans,answered_at:new Date().toISOString()}:x));
+      setAnswers(a=>({...a,[q.id]:""}));
+      notify("✅ Answer sent!");
+    }
+    setSaving(s=>({...s,[q.id]:false}));
+  };
+
+  if(loading)return<div style={{textAlign:"center",padding:30,color:"#555"}}>Loading questions…</div>;
+  if(qs.length===0)return(
+    <div style={{textAlign:"center",padding:"40px 20px",color:"#555"}}>
+      <div style={{fontSize:40,marginBottom:10}}>💬</div>
+      <div style={{fontSize:14,fontWeight:700,color:"#888",marginBottom:4}}>No questions yet</div>
+      <div style={{fontSize:12}}>When team members ask questions from the Physio tab, they'll appear here.</div>
+    </div>
+  );
+  return(
+    <div>
+      <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Member Questions</div>
+      <div style={{fontSize:12,color:"#888",marginBottom:14}}>{qs.filter(q=>!q.answer).length} unanswered · {qs.filter(q=>q.answer).length} answered</div>
+      {qs.map(q=>(
+        <div key={q.id} className="card" style={{marginBottom:12,borderColor:q.answer?"#6EE7B733":"#ffffff12"}}>
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+            <div style={{width:28,height:28,borderRadius:"50%",background:`${q.profiles?.color||"#6EE7B7"}33`,border:`1px solid ${q.profiles?.color||"#6EE7B7"}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:q.profiles?.color||"#6EE7B7",flexShrink:0}}>{(q.profiles?.name||"?").split(" ").map(p=>p[0]).join("").slice(0,2).toUpperCase()}</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:700}}>{q.profiles?.name||"Member"}</div>
+              <div style={{fontSize:10,color:"#555"}}>{new Date(q.created_at).toLocaleDateString("en-AU",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</div>
+            </div>
+            {q.answer?<span style={{fontSize:10,background:"#6EE7B720",color:"#6EE7B7",border:"1px solid #6EE7B740",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Answered</span>:<span style={{fontSize:10,background:"#FCD34D20",color:"#FCD34D",border:"1px solid #FCD34D40",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Pending</span>}
+          </div>
+          <div style={{fontSize:13,color:"#e8e8f0",lineHeight:1.55,marginBottom:10,fontWeight:500}}>💬 {q.question}</div>
+          {q.answer?(
+            <div style={{background:"#6EE7B710",border:"1px solid #6EE7B725",borderRadius:10,padding:"10px 13px"}}>
+              <div style={{fontSize:10,color:"#6EE7B7",fontWeight:700,marginBottom:3}}>YOUR ANSWER</div>
+              <div style={{fontSize:12,color:"#bbb",lineHeight:1.6}}>{q.answer}</div>
+            </div>
+          ):(
+            <div>
+              <textarea value={answers[q.id]||""} onChange={e=>setAnswers(a=>({...a,[q.id]:e.target.value}))} placeholder="Type your answer here…" rows={3} style={{width:"100%",resize:"none",marginBottom:8}}/>
+              <button onClick={()=>sendAnswer(q)} disabled={saving[q.id]||!(answers[q.id]?.trim())} style={{width:"100%",padding:"10px",borderRadius:10,border:"none",background:answers[q.id]?.trim()?"linear-gradient(135deg,#6EE7B7,#93C5FD)":"#ffffff10",color:answers[q.id]?.trim()?"#080810":"#555",fontWeight:800,fontSize:13,cursor:"pointer"}}>{saving[q.id]?"Sending…":"Send Answer"}</button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,session,onTipCreated,feed,teams:teamsProp})=>{
   const [view,setView]=useState("home");   // "home" | "team" | "tools"
   const [selectedTeam,setSelectedTeam]=useState(null);
-  const [toolSec,setToolSec]=useState("analytics");
-  const [chF,setChF]=useState({title:"",icon:"🏃",unit:"",goal:"",color:"#6EE7B7",type:"count",physioNote:""});
+  const [toolSec,setToolSec]=useState("hr");
+  const [chF,setChF]=useState({title:"",icon:"🏃",unit:"",goal:"",color:"#6EE7B7",type:"count",physioNote:"",teamId:""});
   const [tipF,setTipF]=useState({title:"",content:"",body_part:"general",emoji:"💡",color:"#6EE7B7"});
   const [teams,setTeams]=useState([]);
-  const [newTeam,setNewTeam]=useState({name:"",emoji:"👥",color:"#6EE7B7"});
+  const [newTeam,setNewTeam]=useState({name:"",emoji:"👥",color:"#6EE7B7",challengeId:"",challengeTitle:"",challengeIcon:"🏃",challengeUnit:"",challengeGoal:"",challengeType:"count",challengeNote:""});
   const [savingTip,setSavingTip]=useState(false);
   const [analytics,setAnalytics]=useState(null);
   const [analyticsLoading,setAnalyticsLoading]=useState(false);
@@ -1696,7 +2221,18 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
   const createTeam=async()=>{
     if(!newTeam.name.trim())return;
     const{data,error}=await supabase.from('teams').insert({name:newTeam.name,emoji:newTeam.emoji,color:newTeam.color,company_id:cu.company_id}).select().single();
-    if(!error&&data){setTeams(t=>[...t,data]);setNewTeam({name:"",emoji:"👥",color:"#6EE7B7"});notify(`✅ Team "${data.name}" created!`);}
+    if(error||!data){notify("❌ Couldn't create team.");return;}
+    setTeams(t=>[...t,data]);
+    // If a first challenge was selected (and not "skip"), create it for this team
+    if(newTeam.challengeTitle&&newTeam.challengeId!=="none"){
+      const start=new Date().toISOString().split("T")[0];
+      const end=new Date(Date.now()+7*864e5).toISOString().split("T")[0];
+      await supabase.from('challenges').update({active:false}).eq('company_id',cu.company_id).eq('team_id',data.id).eq('active',true);
+      const{data:ch}=await supabase.from('challenges').insert({title:newTeam.challengeTitle,icon:newTeam.challengeIcon,unit:newTeam.challengeUnit,goal:parseFloat(newTeam.challengeGoal)||null,color:newTeam.color,type:newTeam.challengeType,physio_note:newTeam.challengeNote,active:true,start_date:start,end_date:end,company_id:cu.company_id,team_id:data.id}).select().single();
+      if(ch) setChallenges(c=>[...c,{...ch,physioNote:ch.physio_note,endDate:ch.end_date}]);
+    }
+    setNewTeam({name:"",emoji:"👥",color:"#6EE7B7",challengeId:"",challengeTitle:"",challengeIcon:"🏃",challengeUnit:"",challengeGoal:"",challengeType:"count",challengeNote:""});
+    notify(`✅ Team "${data.name}" created!`);
   };
   const createCh=async()=>{
     if(!chF.title||!chF.goal)return;
@@ -1705,8 +2241,8 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
     // Deactivate any currently active challenges first (one at a time)
     await supabase.from('challenges').update({active:false}).eq('company_id',cu.company_id).eq('active',true);
     setChallenges(c=>c.map(x=>({...x,active:false})));
-    const{data,error}=await supabase.from('challenges').insert({title:chF.title,icon:chF.icon,unit:chF.unit,goal:parseFloat(chF.goal),color:chF.color,type:chF.type,physio_note:chF.physioNote,active:true,start_date:start,end_date:end,company_id:cu.company_id}).select().single();
-    if(!error&&data){setChallenges(c=>[...c,{...data,desc:data.description,physioNote:data.physio_note,endDate:data.end_date}]);setChF({title:"",icon:"🏃",unit:"",goal:"",color:"#6EE7B7",type:"count",physioNote:""});notify("✅ Challenge created!");addNotif("challenge",`New challenge: ${data.title}`);}
+    const{data,error}=await supabase.from('challenges').insert({title:chF.title,icon:chF.icon,unit:chF.unit,goal:parseFloat(chF.goal),color:chF.color,type:chF.type,physio_note:chF.physioNote,active:true,start_date:start,end_date:end,company_id:cu.company_id,team_id:chF.teamId||null}).select().single();
+    if(!error&&data){setChallenges(c=>[...c,{...data,desc:data.description,physioNote:data.physio_note,endDate:data.end_date}]);setChF({title:"",icon:"🏃",unit:"",goal:"",color:"#6EE7B7",type:"count",physioNote:"",teamId:""});notify("✅ Challenge created!");addNotif("challenge",`New challenge: ${data.title}`);}
     else notify("❌ Couldn't save challenge — try again.");
   };
   const createTip=async()=>{
@@ -1741,7 +2277,7 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
   // ── Admin tools view ──
   if(view==="tools"){
     const today7=new Date(Date.now()-7*864e5);
-    const TSECS=[["analytics","Analytics","📊"],["tips","Physio Tips","💡"],["challenges","Challenges","🏆"],["insights","Insights","🧠"],["digest","Digest","📧"],["teams","Teams","👥"],...(cu.is_super_admin?[["superadmin","Super Admin","🌐"]]:[])]
+    const TSECS=[["hr","HR Report","📋"],["analytics","Analytics","📊"],["tips","Physio Tips","💡"],["questions","Q&A","💬"],["challenges","Challenges","🏆"],["insights","Insights","🧠"],["digest","Digest","📧"],["teams","Teams","👥"],...(cu.is_super_admin?[["superadmin","Super Admin","🌐"]]:[])]
     const weekLogs=(feed||[]).filter(p=>new Date(p.ts)>=today7);
     const weekLoggers=new Set(weekLogs.map(p=>p.uid));
     const totalMembers=users.length+1;
@@ -1803,6 +2339,7 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
           <Btn color="#6EE7B7" text={savingTip?"Posting…":"💡 Post to Feed"} style={{width:"100%",padding:"11px"}} onClick={createTip} disabled={savingTip||!tipF.title||!tipF.content}/>
         </div>
       </div>}
+      {toolSec==="questions"&&<PhysioQnA cu={cu} notify={notify}/>}
       {toolSec==="challenges"&&<div>
         <div className="card" style={{marginBottom:12}}>
           <div style={{fontWeight:700,marginBottom:10}}>Create Challenge</div>
@@ -1810,12 +2347,13 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
           <div style={{display:"flex",gap:7}}><Inp label="Title" value={chF.title} onChange={e=>setChF(f=>({...f,title:e.target.value}))} style={{flex:3}}/><Inp label="Icon" value={chF.icon} onChange={e=>setChF(f=>({...f,icon:e.target.value}))} style={{flex:1}}/></div>
           {chF.type==="count"&&<div style={{display:"flex",gap:7}}><Inp label="Unit" value={chF.unit} onChange={e=>setChF(f=>({...f,unit:e.target.value}))} style={{flex:1}}/><Inp label="Goal" value={chF.goal} onChange={e=>setChF(f=>({...f,goal:e.target.value}))} type="number" style={{flex:1}}/></div>}
           <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:5}}>Color</div><div style={{display:"flex",gap:5}}>{TC.map(c=><button key={c} onClick={()=>setChF(f=>({...f,color:c}))} style={{width:24,height:24,borderRadius:"50%",background:c,border:`3px solid ${chF.color===c?"#fff":"transparent"}`}}/>)}</div></div>
-          <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:4}}>Physio Note <span style={{color:"#555"}}>(optional)</span></div><textarea value={chF.physioNote} onChange={e=>setChF(f=>({...f,physioNote:e.target.value}))} placeholder="Why does this challenge matter?" rows={3} style={{resize:"none",width:"100%"}}/></div>
+          <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:4}}>Assign to Team <span style={{color:"#555"}}>(optional — leave blank for all teams)</span></div><select value={chF.teamId} onChange={e=>setChF(f=>({...f,teamId:e.target.value}))} style={{width:"100%",background:"#ffffff08",border:"1px solid #ffffff15",color:"#e8e8f0",borderRadius:10,padding:"10px 14px",fontSize:14,outline:"none",fontFamily:"system-ui,sans-serif"}}><option value="">🌐 All Teams</option>{teams.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.name}</option>)}</select></div>
+          <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:4}}>Physio Note <span style={{color:"#555"}}>(optional)</span></div><textarea value={chF.physioNote} onChange={e=>setChF(f=>({...f,physioNote:e.target.value}))} placeholder="Why does this challenge matter? This will be shown to your team when they first join the challenge." rows={3} style={{resize:"none",width:"100%"}}/></div>
           <Btn color="#F9A8D4" text="Launch 🚀" style={{width:"100%"}} onClick={createCh}/>
         </div>
-        {challenges.map(ch=><div key={ch.id} className="card" style={{marginBottom:8,display:"flex",gap:9,alignItems:"center",opacity:ch.active?1:.6}}>
+        {challenges.map(ch=>{const assignedTeam=ch.team_id?teams.find(t=>t.id===ch.team_id):null;return<div key={ch.id} className="card" style={{marginBottom:8,display:"flex",gap:9,alignItems:"center",opacity:ch.active?1:.6}}>
           <span style={{fontSize:20}}>{ch.icon}</span>
-          <div style={{flex:1}}><div style={{fontWeight:700,color:ch.color,fontSize:13}}>{ch.title}</div><div style={{fontSize:11,color:"#888"}}>{ch.type==="habit"?"Habit ✅":ch.goal?.toLocaleString()+" "+ch.unit}</div></div>
+          <div style={{flex:1}}><div style={{fontWeight:700,color:ch.color,fontSize:13}}>{ch.title}</div><div style={{fontSize:11,color:"#888"}}>{ch.type==="habit"?"Habit ✅":ch.goal?.toLocaleString()+" "+ch.unit} · {assignedTeam?`${assignedTeam.emoji} ${assignedTeam.name}`:"All Teams"}</div></div>
           <button onClick={async()=>{
   if(!ch.active){
     // Resuming — deactivate all others first
@@ -1825,8 +2363,9 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
   await supabase.from('challenges').update({active:!ch.active}).eq('id',ch.id);
   setChallenges(c=>c.map(x=>x.id===ch.id?{...x,active:!x.active}:x));
 }} style={{background:`${ch.active?"#FCD34D":"#6EE7B7"}15`,border:`1px solid ${ch.active?"#FCD34D":"#6EE7B7"}33`,color:ch.active?"#FCD34D":"#6EE7B7",borderRadius:8,padding:"4px 8px",fontSize:11,fontWeight:700}}>{ch.active?"Pause":"Resume"}</button>
-        </div>)}
+        </div>})}
       </div>}
+      {toolSec==="hr"&&<HRDashboard cu={cu}/>}
       {toolSec==="insights"&&<InsightsSection cu={cu} session={session} users={users}/>}
       {toolSec==="digest"&&<div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><div style={{fontWeight:700,fontSize:15}}>Weekly Digest Preview</div><span style={{fontSize:10,background:"#6EE7B722",border:"1px solid #6EE7B733",borderRadius:8,padding:"2px 8px",color:"#6EE7B7",fontWeight:700}}>PREVIEW</span></div>
@@ -1864,9 +2403,36 @@ const AdminTab=({cu,users,setUsers,challenges,setChallenges,notify,addNotif,sess
       {toolSec==="teams"&&<div>
         <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>Create New Team</div>
         <div className="card" style={{marginBottom:14}}>
-          <Inp label="Team Name" value={newTeam.name} onChange={e=>setNewTeam(t=>({...t,name:e.target.value}))} placeholder="e.g. Physio Team"/>
-          <div style={{marginBottom:10}}><div style={{fontSize:11,color:"#888",marginBottom:5}}>Color</div><div style={{display:"flex",gap:5}}>{TC.map(c=><button key={c} onClick={()=>setNewTeam(t=>({...t,color:c}))} style={{width:24,height:24,borderRadius:"50%",background:c,border:`3px solid ${newTeam.color===c?"#fff":"transparent"}`}}/>)}</div></div>
-          <Btn color="#93C5FD" text="Create Team" style={{width:"100%"}} onClick={createTeam}/>
+          <Inp label="Team Name" value={newTeam.name} onChange={e=>setNewTeam(t=>({...t,name:e.target.value}))} placeholder="e.g. Sales Team"/>
+          <div style={{marginBottom:14}}><div style={{fontSize:11,color:"#888",marginBottom:5}}>Color</div><div style={{display:"flex",gap:5}}>{TC.map(c=><button key={c} onClick={()=>setNewTeam(t=>({...t,color:c}))} style={{width:24,height:24,borderRadius:"50%",background:c,border:`3px solid ${newTeam.color===c?"#fff":"transparent"}`}}/>)}</div></div>
+          {/* First challenge picker */}
+          <div style={{borderTop:"1px solid #ffffff0f",paddingTop:14,marginBottom:4}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#6EE7B7",marginBottom:4}}>🏆 Week 1 Challenge</div>
+            <div style={{fontSize:11,color:"#666",marginBottom:10}}>Pick one to start them off. One challenge per week per team.</div>
+            <div style={{display:"flex",flexDirection:"column",gap:7}}>
+              {[
+                {id:"none",icon:"⏭️",title:"Skip for now",sub:"Add a challenge later from the Challenges tab",type:"habit",goal:null,unit:"",note:""},
+                {id:"stretch",icon:"🧘",title:"Daily Desk Stretch",sub:"5 min · Habit · Reduces neck & back pain by 72%",type:"habit",goal:null,unit:"",note:"Prolonged sitting increases spinal disc pressure by 40%. Daily stretching is the single most effective intervention for office-related musculoskeletal pain."},
+                {id:"steps",icon:"🦶",title:"10,000 Steps",sub:"Count · 10,000 steps/day · Cuts mortality risk 36%",type:"count",goal:10000,unit:"steps",note:"Every 1,000 extra steps per day reduces cardiovascular mortality by 15%. Walking is the most underrated medicine — no gym required."},
+                {id:"water",icon:"💧",title:"8 Glasses of Water",sub:"Count · 8 glasses/day · Boosts cognition 20%",type:"count",goal:8,unit:"glasses",note:"Even mild dehydration (1–2% body weight) impairs concentration, memory and reaction time. Most office workers are chronically under-hydrated."},
+                {id:"mindfulness",icon:"🧠",title:"2-Minute Breathing Break",sub:"Habit · Daily · Reduces anxiety 38%",type:"habit",goal:null,unit:"",note:"Just 2 minutes of diaphragmatic breathing activates the parasympathetic nervous system, measurably reducing cortisol within 90 seconds."},
+                {id:"movement",icon:"🏃",title:"Movement Break Every Hour",sub:"Habit · Daily · Reduces blood sugar spikes 30%",type:"habit",goal:null,unit:"",note:"Sedentary bouts over 30 minutes cause measurable drops in insulin sensitivity. A 2-minute walk every hour reduces blood sugar spikes by 30% and improves afternoon energy."},
+                {id:"eye",icon:"👁️",title:"20-20-20 Eye Rule",sub:"Habit · Daily · Reduces digital eye strain 62%",type:"habit",goal:null,unit:"",note:"Office workers blink 66% less on screens. Every 20 minutes, look 20 feet away for 20 seconds. Reduces eye strain, headaches and end-of-day fatigue significantly."},
+                {id:"sleep",icon:"😴",title:"8 Hours Sleep",sub:"Count · 8 hrs/night · 11 fewer sick days/year",type:"count",goal:8,unit:"hours",note:"Poor sleep costs employers 11 lost productivity days per employee per year. Consistent 8-hour sleep improves reaction time, mood and immune function within one week."},
+              ].map(ch=>{
+                const sel=newTeam.challengeId===ch.id;
+                return<button key={ch.id} onClick={()=>setNewTeam(t=>({...t,challengeId:ch.id,challengeTitle:ch.title,challengeIcon:ch.icon,challengeType:ch.type,challengeGoal:ch.goal?String(ch.goal):"",challengeUnit:ch.unit,challengeNote:ch.note}))} style={{display:"flex",gap:10,alignItems:"center",background:sel?"#6EE7B715":"#ffffff06",border:`1px solid ${sel?"#6EE7B755":"#ffffff0f"}`,borderRadius:12,padding:"10px 12px",textAlign:"left",cursor:"pointer",width:"100%"}}>
+                  <span style={{fontSize:22,flexShrink:0}}>{ch.icon}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,fontSize:13,color:sel?"#6EE7B7":"#e8e8f0"}}>{ch.title}</div>
+                    <div style={{fontSize:10,color:"#666",marginTop:1}}>{ch.sub}</div>
+                  </div>
+                  {sel&&<span style={{color:"#6EE7B7",fontWeight:800,fontSize:14}}>✓</span>}
+                </button>;
+              })}
+            </div>
+          </div>
+          <Btn color="#93C5FD" text="Create Team →" style={{width:"100%",marginTop:14}} onClick={createTeam} disabled={!newTeam.name.trim()||!newTeam.challengeId}/>
         </div>
         {teams.map(t=><div key={t.id} className="card" style={{display:"flex",gap:10,alignItems:"center",marginBottom:8,borderColor:`${t.color}22`}}>
           <div style={{width:40,height:40,borderRadius:12,background:`${t.color}22`,border:`1px solid ${t.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>{t.emoji}</div>
@@ -2083,6 +2649,12 @@ export default function App({ session }) {
   const [myPulseVoted,setMyPulseVoted]=useState(false);
   const [activeSurvey,setActiveSurvey]=useState(null);
   const [mySurveyDone,setMySurveyDone]=useState(false);
+  const [introChallenge,setIntroChallenge]=useState(null);
+  const [showAvatarMenu,setShowAvatarMenu]=useState(false);
+  const [showEditProfile,setShowEditProfile]=useState(false);
+  const [editName,setEditName]=useState("");
+  const [editRole,setEditRole]=useState("");
+  const [editSaving,setEditSaving]=useState(false);
 
   // Load profile
   useEffect(()=>{
@@ -2103,13 +2675,23 @@ export default function App({ session }) {
       .then(({data})=>{ if(data) setTips(data); });
   },[cu?.id]);
 
-  // Load challenges from Supabase (company-scoped)
+  // Load challenges from Supabase (company-scoped, then filter to user's team or company-wide)
   useEffect(()=>{
     if(!cu)return;
     const q=supabase.from('challenges').select('*').order('created_at',{ascending:true});
     (cu.is_super_admin||!cu.company_id?q:q.eq('company_id',cu.company_id))
       .then(({data})=>{
-        if(data) setChallenges(data.map(c=>({...c,desc:c.description,physioNote:c.physio_note,endDate:c.end_date})));
+        if(data){
+          // For regular members, show: challenges for their specific team + challenges for all teams (team_id is null)
+          const visible=cu.is_admin||cu.is_super_admin?data:data.filter(c=>!c.team_id||c.team_id===cu.team_id);
+          const mapped=visible.map(c=>({...c,desc:c.description,physioNote:c.physio_note,endDate:c.end_date}));
+          setChallenges(mapped);
+          // Show intro to new users for their active challenge
+          if(!cu.has_seen_intro){
+            const active=mapped.find(c=>c.active);
+            if(active) setIntroChallenge(active);
+          }
+        }
       });
   },[cu?.id]);
 
@@ -2258,7 +2840,7 @@ export default function App({ session }) {
   const unread=notifs.filter(n=>!n.read).length;
   const myR=lb.findIndex(e=>e.uid===cu?.id)+1;
   const allUsers=[cu,...users.filter(u=>u.id!==cu?.id)];
-  const NAV=[["home","Home","🏠"],["crew","Crew","👥"],["train","Train","🏋️"],["physio","Physio","🩺"],...(cu?.is_admin?[["admin","Admin","⚙️"]]:[]),["me","Me","👤"]];
+  const NAV=[["home","Home","🏠"],["crew","Crew","👥"],["train","Train","🏋️"],["sleep","Sleep","😴"],["physio","Physio","🩺"],...(cu?.is_admin?[["admin","Admin","⚙️"]]:[]),["me","Me","👤"]];
   // Nudge: how many teammates logged activity today (excluding self)
   const todayLogs=feed.filter(p=>new Date(p.ts).toDateString()===todayStr());
   const iLoggedToday=todayLogs.some(p=>p.uid===cu?.id);
@@ -2272,6 +2854,33 @@ export default function App({ session }) {
     </div>
     {showNotifs&&<><div style={{position:"fixed",inset:0,zIndex:799}} onClick={()=>setShowNotifs(false)}/><NotifsPanel notifs={notifs} onClose={()=>setShowNotifs(false)} onRead={id=>setNotifs(n=>n.map(x=>x.id===id?{...x,read:true}:x))}/></>}
     {showLog&&<LogModal onClose={()=>setShowLog(null)} challenges={challenges} cu={cu} setFeed={setFeed} notify={notify} initialChallenge={typeof showLog==="object"?showLog:null} awardBadge={awardBadge} feed={feed}/>}
+    {introChallenge&&<ChallengeIntroModal challenge={introChallenge} onDone={async()=>{setIntroChallenge(null);await supabase.from('profiles').update({has_seen_intro:true}).eq('id',session.user.id);setCu(c=>({...c,has_seen_intro:true}));}}/>}
+    {showEditProfile&&<Modal onClose={()=>setShowEditProfile(false)}>
+      <div style={{fontWeight:800,fontSize:17,marginBottom:4}}>✏️ Edit Profile</div>
+      <div style={{fontSize:12,color:"#666",marginBottom:18}}>Changes are visible to your team.</div>
+      <div style={{display:"flex",justifyContent:"center",marginBottom:18}}>
+        <div style={{width:64,height:64,borderRadius:"50%",background:"linear-gradient(135deg,#6EE7B7,#93C5FD)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:24,color:"#080810"}}>
+          {(editName||cu.name||"?")[0].toUpperCase()}
+        </div>
+      </div>
+      <div style={{marginBottom:12}}>
+        <div style={{fontSize:11,color:"#888",marginBottom:5}}>Full Name</div>
+        <input value={editName} onChange={e=>setEditName(e.target.value)} placeholder="Your name" style={{width:"100%",background:"#ffffff08",border:"1px solid #ffffff15",color:"#e8e8f0",borderRadius:10,padding:"10px 14px",fontSize:14,outline:"none",fontFamily:"system-ui,sans-serif"}}/>
+      </div>
+      <div style={{marginBottom:20}}>
+        <div style={{fontSize:11,color:"#888",marginBottom:5}}>Role / Job Title</div>
+        <input value={editRole} onChange={e=>setEditRole(e.target.value)} placeholder="e.g. Marketing Manager" style={{width:"100%",background:"#ffffff08",border:"1px solid #ffffff15",color:"#e8e8f0",borderRadius:10,padding:"10px 14px",fontSize:14,outline:"none",fontFamily:"system-ui,sans-serif"}}/>
+      </div>
+      <button disabled={editSaving||!editName.trim()} onClick={async()=>{
+        setEditSaving(true);
+        const{error}=await supabase.from('profiles').update({name:editName.trim(),role:editRole.trim()}).eq('id',session.user.id);
+        if(!error){setCu(c=>({...c,name:editName.trim(),role:editRole.trim()}));setShowEditProfile(false);notify("✅ Profile updated!");}
+        else notify("❌ Couldn't save — try again.");
+        setEditSaving(false);
+      }} style={{width:"100%",padding:12,borderRadius:10,border:"none",background:"linear-gradient(135deg,#6EE7B7,#93C5FD)",color:"#080810",fontWeight:800,fontSize:15,cursor:"pointer",opacity:editSaving?0.6:1}}>
+        {editSaving?"Saving…":"Save Changes"}
+      </button>
+    </Modal>}
 
     <div style={{maxWidth:480,margin:"0 auto",minHeight:"100vh",display:"flex",flexDirection:"column"}}>
       <div style={{padding:"13px 13px 0",position:"sticky",top:0,zIndex:40,background:`linear-gradient(to bottom,${th.bg} 85%,transparent)`}}>
@@ -2284,7 +2893,26 @@ export default function App({ session }) {
             <button onClick={()=>setDark(v=>!v)} style={{width:30,height:30,borderRadius:8,background:th.nb,border:`1px solid ${th.cb}`,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>{dark?"☀️":"🌙"}</button>
             <div onClick={()=>setShowNotifs(v=>!v)} style={{position:"relative",cursor:"pointer",width:30,height:30,borderRadius:8,background:th.nb,border:`1px solid ${th.cb}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🔔{unread>0&&<div style={{position:"absolute",top:-3,right:-3,width:13,height:13,borderRadius:"50%",background:"#F9A8D4",fontSize:7,fontWeight:800,color:"#000",display:"flex",alignItems:"center",justifyContent:"center"}}>{unread}</div>}</div>
             {myR>0&&<div style={{fontSize:10,color:"#6EE7B7",background:"#6EE7B715",border:"1px solid #6EE7B730",borderRadius:18,padding:"2px 7px",fontWeight:700}}>#{myR}</div>}
-            <div onClick={async()=>{await supabase.auth.signOut();}} style={{cursor:"pointer"}}><Av u={cu} s={30}/></div>
+            <div style={{position:"relative"}}>
+              <div onClick={()=>setShowAvatarMenu(v=>!v)} style={{cursor:"pointer"}}><Av u={cu} s={30}/></div>
+              {showAvatarMenu&&<><div style={{position:"fixed",inset:0,zIndex:149}} onClick={()=>setShowAvatarMenu(false)}/><div style={{position:"absolute",top:36,right:0,background:"#1a1a2e",border:"1px solid #ffffff18",borderRadius:14,padding:8,minWidth:180,zIndex:150,boxShadow:"0 8px 32px #000a"}}>
+                <div style={{padding:"8px 12px",marginBottom:4,borderBottom:"1px solid #ffffff0f"}}>
+                  <div style={{fontWeight:700,fontSize:13,color:"#e8e8f0"}}>{cu.name}</div>
+                  <div style={{fontSize:11,color:"#666",marginTop:1}}>{cu.role||"Team Member"}</div>
+                </div>
+                {[
+                  {icon:"👤",label:"My Profile",action:()=>{setTab("me");setShowAvatarMenu(false);}},
+                  {icon:"✏️",label:"Edit Profile",action:()=>{setEditName(cu.name||"");setEditRole(cu.role||"");setShowEditProfile(true);setShowAvatarMenu(false);}},
+                ].map(item=><button key={item.label} onClick={item.action} style={{display:"flex",alignItems:"center",gap:9,width:"100%",background:"transparent",border:"none",color:"#ccc",fontSize:13,padding:"8px 12px",borderRadius:9,cursor:"pointer",textAlign:"left"}}>
+                  <span>{item.icon}</span>{item.label}
+                </button>)}
+                <div style={{borderTop:"1px solid #ffffff0f",marginTop:4,paddingTop:4}}>
+                  <button onClick={async()=>{setShowAvatarMenu(false);await supabase.auth.signOut();}} style={{display:"flex",alignItems:"center",gap:9,width:"100%",background:"transparent",border:"none",color:"#F9A8D4",fontSize:13,padding:"8px 12px",borderRadius:9,cursor:"pointer",textAlign:"left"}}>
+                    <span>🚪</span>Sign out
+                  </button>
+                </div>
+              </div></>}
+            </div>
           </div>
         </div>
         <div style={{display:"flex",gap:2,background:th.nb,borderRadius:12,padding:3,overflowX:"auto",marginBottom:2}}>
@@ -2301,6 +2929,7 @@ export default function App({ session }) {
           <FeedTab feed={feed} setFeed={setFeed} challenges={challenges} users={allUsers} cu={cu} notify={notify} tips={tips}/>
         </div>}
         {tab==="train"&&<TrainTab challenges={challenges} feed={feed} cu={cu} onLog={ch=>setShowLog(ch)} lb={lb} users={allUsers} badges={badges} teams={teams}/>}
+        {tab==="sleep"&&<SleepTab cu={cu} lastCheckin={lastCheckin}/>}
         {tab==="physio"&&<PhysioTab cu={cu}/>}
         {tab==="admin"&&cu?.is_admin&&<AdminTab cu={cu} users={allUsers} setUsers={setUsers} challenges={challenges} setChallenges={setChallenges} notify={notify} addNotif={addNotif} session={session} onTipCreated={handleTipCreated} feed={feed} teams={teams}/>}
         {tab==="me"&&<MeTab cu={cu} lb={lb} pd={pd} setPd={setPd} notify={notify} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin} badges={badges} awardBadge={awardBadge} allUsers={allUsers}/>}

@@ -815,11 +815,14 @@ export default function PhysioTab({ cu }) {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <span style={{ fontWeight: 700, fontSize: 17 }}>🩺 Physio Resources</span>
-      </div>
-      <div style={{ fontSize: 12, color: '#888', marginBottom: 14 }}>
-        Evidence-based desk stretches &amp; posture guidance by Physio Brooke 👩‍⚕️
+      <div style={{ background: 'linear-gradient(135deg,#C4B5FD15,#6EE7B710)', border: '1px solid #C4B5FD25', borderRadius: 14, padding: '16px 16px 14px', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+          <span style={{ fontSize: 26 }}>🩺</span>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 18, color: '#C4B5FD' }}>Physio Resources</div>
+            <div style={{ fontSize: 11, color: '#666' }}>Evidence-based guidance by Physio Brooke 👩‍⚕️</div>
+          </div>
+        </div>
       </div>
 
       {/* Sub-nav */}

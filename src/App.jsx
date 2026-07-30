@@ -1096,7 +1096,7 @@ const TrainTab=({challenges,feed,cu,onLog,lb,users,badges,teams,cu2,notify,sessi
   return<div>
     <div style={{display:"flex",gap:5,marginBottom:14,background:"#ffffff07",borderRadius:11,padding:3}}>
       {[["challenges","🏋️ Challenges"],["board","🥇 Leaderboard"]].map(([id,lbl])=>(
-        <button key={id} onClick={()=>setSec(id)} style={{flex:1,padding:"8px 4px",borderRadius:8,border:"none",background:sec===id?"#6EE7B722":"transparent",color:sec===id?"#6EE7B7":"#888",fontWeight:sec===id?700:400,fontSize:12}}>{lbl}</button>
+        <button key={id} onClick={()=>setSec(id)} style={{flex:1,padding:"8px 4px",borderRadius:8,border:sec===id?"1px solid #6EE7B733":"1px solid transparent",background:sec===id?"#6EE7B728":"transparent",color:sec===id?"#6EE7B7":"#666",fontWeight:sec===id?700:400,fontSize:12}}>{lbl}</button>
       ))}
     </div>
     {sec==="challenges"&&<ChalTab challenges={challenges} feed={feed} cu={cu} onLog={onLog}/>}
@@ -1110,7 +1110,7 @@ const MeTab=({cu,lb,pd,setPd,notify,checked,onCheckin,lastCheckin,badges,awardBa
   return<div>
     <div style={{display:"flex",gap:5,marginBottom:14,background:"#ffffff07",borderRadius:11,padding:3}}>
       {[["profile","👤 Profile"],["messages","💬 Messages"]].map(([id,lbl])=>(
-        <button key={id} onClick={()=>setSec(id)} style={{flex:1,padding:"8px 4px",borderRadius:8,border:"none",background:sec===id?"#6EE7B722":"transparent",color:sec===id?"#6EE7B7":"#888",fontWeight:sec===id?700:400,fontSize:12}}>{lbl}</button>
+        <button key={id} onClick={()=>setSec(id)} style={{flex:1,padding:"8px 4px",borderRadius:8,border:sec===id?"1px solid #6EE7B733":"1px solid transparent",background:sec===id?"#6EE7B728":"transparent",color:sec===id?"#6EE7B7":"#666",fontWeight:sec===id?700:400,fontSize:12}}>{lbl}</button>
       ))}
     </div>
     {sec==="profile"&&<ProfileTab cu={cu} lb={lb} pd={pd} setPd={setPd} notify={notify} checked={checked} onCheckin={onCheckin} lastCheckin={lastCheckin} badges={badges} awardBadge={awardBadge}/>}
@@ -1136,7 +1136,7 @@ const ChalTab=({challenges,feed,cu,onLog})=>{
       const doneToday=myPosts.some(p=>new Date(p.ts).toDateString()===todayStr());
       const weekDone=weekDays.map(d=>myPosts.some(p=>new Date(p.ts).toDateString()===d));
 
-      return<div key={ch.id} className="card" style={{marginBottom:14,borderColor:`${ch.color}22`}}>
+      return<div key={ch.id} className="card" style={{marginBottom:14,borderColor:`${ch.color}33`,borderLeft:`3px solid ${ch.color}88`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
           <div>
             <div style={{fontSize:26,marginBottom:3}}>{ch.icon}</div>

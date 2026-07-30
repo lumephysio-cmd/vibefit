@@ -887,7 +887,7 @@ const KudosCard=({kudos,users})=>{
   </div>;
 };
 
-const FeedTab=({feed,setFeed,challenges,users,cu,notify,tips=[]})=>{
+const FeedTab=({feed,setFeed,challenges,users,cu,notify,tips=[],onLog})=>{
   const [ct,setCt]=useState({});
   const [expanded,setExpanded]=useState({});
   const [kudosList,setKudosList]=useState([]);
@@ -911,8 +911,11 @@ const FeedTab=({feed,setFeed,challenges,users,cu,notify,tips=[]})=>{
   return<div>
     {showKudos&&<KudosModal cu={cu} users={users} onClose={()=>setShowKudos(false)} onSent={k=>setKudosList(l=>[k,...l])}/>}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-      <div style={{fontWeight:700,fontSize:15}}>Team Feed</div>
-      <button onClick={()=>setShowKudos(true)} style={{background:"linear-gradient(135deg,#6EE7B722,#93C5FD18)",border:"1px solid #6EE7B740",borderRadius:20,padding:"6px 14px",color:"#6EE7B7",fontWeight:700,fontSize:12,cursor:"pointer"}}>🙌 Give Kudos</button>
+      <div style={{fontWeight:700,fontSize:17}}>Team Feed</div>
+      <div style={{display:"flex",gap:7}}>
+        {onLog&&<Btn color="#6EE7B7" text="+ Log" onClick={onLog}/>}
+        <button onClick={()=>setShowKudos(true)} style={{background:"linear-gradient(135deg,#6EE7B722,#93C5FD18)",border:"1px solid #6EE7B740",borderRadius:20,padding:"6px 14px",color:"#6EE7B7",fontWeight:700,fontSize:12,cursor:"pointer"}}>🙌 Give Kudos</button>
+      </div>
     </div>
     {items.map(item=>{
       if(item._kind==="tip") return<TipCard key={`tip-${item.id}`} tip={item}/>;
@@ -1173,7 +1176,7 @@ const ChalTab=({challenges,feed,cu,onLog})=>{
         <button
           onClick={()=>onLog(ch)}
           disabled={isHabit&&doneToday}
-          style={{width:"100%",background:isHabit&&doneToday?"#6EE7B710":`${ch.color}18`,border:`1px solid ${isHabit&&doneToday?"#6EE7B733":ch.color+"44"}`,color:isHabit&&doneToday?"#6EE7B7":ch.color,padding:"10px",borderRadius:9,fontWeight:700,fontSize:13,opacity:isHabit&&doneToday?.65:1}}>
+          style={{width:"100%",background:isHabit&&doneToday?"#6EE7B712":`${ch.color}28`,border:`1px solid ${isHabit&&doneToday?"#6EE7B740":ch.color+"77"}`,color:isHabit&&doneToday?"#6EE7B7":ch.color,padding:"10px",borderRadius:9,fontWeight:800,fontSize:13,opacity:isHabit&&doneToday?.65:1}}>
           {isHabit&&doneToday?"✅ Done for today!":`${isHabit?"✅ Mark as Done":"Log"} ${ch.icon} ${isHabit?"":"Progress"}`}
         </button>
       </div>;
@@ -2924,11 +2927,7 @@ export default function App({ session }) {
       <div style={{flex:1,overflowY:"auto",padding:"14px 16px 100px"}}>
         {tab==="home"&&<HomeTab cu={cu} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin} feed={feed} challenges={challenges} onLog={ch=>setShowLog(ch||true)} users={allUsers} setTab={setTab} activePulse={activePulse} myPulseVoted={myPulseVoted} setMyPulseVoted={setMyPulseVoted} activeSurvey={activeSurvey} mySurveyDone={mySurveyDone} setMySurveyDone={setMySurveyDone} iLoggedToday={iLoggedToday} nudgeCount={nudgeCount}/>}
         {tab==="crew"&&<div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-            <div style={{fontWeight:700,fontSize:17}}>Team Feed</div>
-            <Btn color="#6EE7B7" text="+ Log" onClick={()=>setShowLog(true)}/>
-          </div>
-          <FeedTab feed={feed} setFeed={setFeed} challenges={challenges} users={allUsers} cu={cu} notify={notify} tips={tips}/>
+          <FeedTab feed={feed} setFeed={setFeed} challenges={challenges} users={allUsers} cu={cu} notify={notify} tips={tips} onLog={()=>setShowLog(true)}/>
         </div>}
         {tab==="train"&&<TrainTab challenges={challenges} feed={feed} cu={cu} onLog={ch=>setShowLog(ch)} lb={lb} users={allUsers} badges={badges} teams={teams}/>}
         {tab==="sleep"&&<SleepTab cu={cu} lastCheckin={lastCheckin}/>}

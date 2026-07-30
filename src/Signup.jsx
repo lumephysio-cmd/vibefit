@@ -41,6 +41,12 @@ export default function Signup({ onSwitch, inviteCode, inviteTeamId, inviteCompa
       }
     })
     if (signUpError) { setError(signUpError.message); setLoading(false); return }
+    // Fire Day 1 onboarding email (non-blocking)
+    fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/onboarding-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({ to: email, name: name || email.split('@')[0], day: 1 }),
+    }).catch(() => {});
     if (data.user && data.session) {
       // Session exists (email confirmation disabled in this project) — apply profile update now
       // and skip the "check your email" screen since no email was sent.

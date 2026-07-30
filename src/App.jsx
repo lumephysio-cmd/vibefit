@@ -888,12 +888,30 @@ const KudosCard=({kudos,users})=>{
   </div>;
 };
 
-const FeedTab=({feed,setFeed,challenges,users,cu,notify,tips=[],onLog})=>{
+const FeedTab=({feed,setFeed,challenges,users,cu,notify,tips=[],onLog,addNotif})=>{
   const [ct,setCt]=useState({});
   const [expanded,setExpanded]=useState({});
   const [kudosList,setKudosList]=useState([]);
   const [showKudos,setShowKudos]=useState(false);
-  const react=(pid,emoji)=>setFeed(f=>f.map(p=>{if(p.id!==pid)return p;const cur=p.rx[emoji]||[],has=cur.includes(cu.id);return{...p,rx:{...p.rx,[emoji]:has?cur.filter(x=>x!==cu.id):[...cur,cu.id]}};}));
+  const react=(pid,emoji)=>{
+    setFeed(f=>{
+      const updated=f.map(p=>{
+        if(p.id!==pid)return p;
+        const cur=p.rx[emoji]||[],has=cur.includes(cu.id);
+        // Send notification to post owner when adding a reaction
+        if(!has&&p.uid!==cu.id){
+          const owner=users.find(u=>u.id===p.uid);
+          const senderName=cu.name?.split(" ")[0]||"Someone";
+          const ch=challenges.find(c=>String(c.id)===String(p.cid));
+          const notifText=`${senderName} reacted ${emoji} to your ${ch?ch.icon+" "+ch.title:"post"}`;
+          supabase.from('notifications').insert({user_id:p.uid,type:'reaction',text:notifText}).then(()=>{});
+          if(addNotif)addNotif('reaction',notifText);
+        }
+        return{...p,rx:{...p.rx,[emoji]:cur.includes(cu.id)?cur.filter(x=>x!==cu.id):[...cur,cu.id]}};
+      });
+      return updated;
+    });
+  };
   const comment=pid=>{const t=ct[pid];if(!t?.trim())return;setFeed(f=>f.map(p=>p.id!==pid?p:{...p,comments:[...p.comments,{uid:cu.id,text:t}]}));setCt(c=>({...c,[pid]:""}));};
   const toggle=pid=>setExpanded(e=>({...e,[pid]:!e[pid]}));
 
@@ -998,8 +1016,62 @@ const FeedTab=({feed,setFeed,challenges,users,cu,notify,tips=[],onLog})=>{
   </div>;
 };
 
+// ── WEEKLY DIGEST ──
+const WeeklyDigest=({feed,challenges,users,cu})=>{
+  const now=new Date();
+  const weekStart=new Date(now);weekStart.setDate(now.getDate()-now.getDay());weekStart.setHours(0,0,0,0);
+  const weekLogs=feed.filter(p=>new Date(p.ts)>=weekStart);
+  const checkinsThisWeek=new Set(weekLogs.map(p=>p.uid));
+  const teammates=users.filter(u=>u.id!==cu.id);
+  const totalPeople=teammates.length+1;
+  const participantCount=checkinsThisWeek.size;
+  const pct=totalPeople>0?Math.round(participantCount/totalPeople*100):0;
+
+  // Most logged challenge
+  const chCounts={};
+  weekLogs.forEach(p=>{if(p.cid)chCounts[p.cid]=(chCounts[p.cid]||0)+1;});
+  const topChId=Object.entries(chCounts).sort((a,b)=>b[1]-a[1])[0]?.[0];
+  const topCh=challenges.find(c=>String(c.id)===String(topChId));
+
+  // Top logger (most logs this week)
+  const logCounts={};
+  weekLogs.forEach(p=>{logCounts[p.uid]=(logCounts[p.uid]||0)+1;});
+  const topUid=Object.entries(logCounts).sort((a,b)=>b[1]-a[1])[0]?.[0];
+  const topUser=users.find(u=>u.id===topUid);
+
+  if(participantCount===0)return null;
+  const barColor="#6EE7B7";
+  return(
+    <div style={{background:"linear-gradient(135deg,#6EE7B70d,#93C5FD08)",border:"1px solid #6EE7B720",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
+      <div style={{fontWeight:800,fontSize:13,color:"#6EE7B7",marginBottom:10}}>📊 This Week's Snapshot</div>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+        <div style={{flex:1,minWidth:100,background:"#ffffff06",borderRadius:10,padding:"10px 12px"}}>
+          <div style={{fontSize:11,color:"#666",marginBottom:4}}>Team check-ins</div>
+          <div style={{height:4,background:"#ffffff0a",borderRadius:2,marginBottom:5}}>
+            <div style={{width:`${pct}%`,height:"100%",background:barColor,borderRadius:2,transition:"width .4s"}}/>
+          </div>
+          <div style={{fontSize:18,fontWeight:800,color:barColor}}>{pct}%</div>
+          <div style={{fontSize:10,color:"#555"}}>{participantCount} of {totalPeople} active</div>
+        </div>
+        {topCh&&<div style={{flex:1,minWidth:100,background:"#ffffff06",borderRadius:10,padding:"10px 12px"}}>
+          <div style={{fontSize:11,color:"#666",marginBottom:4}}>Most active</div>
+          <div style={{fontSize:22,marginBottom:2}}>{topCh.icon}</div>
+          <div style={{fontSize:12,fontWeight:700,color:topCh.color}}>{topCh.title}</div>
+          <div style={{fontSize:10,color:"#555"}}>{chCounts[topChId]} log{chCounts[topChId]!==1?"s":""} this week</div>
+        </div>}
+        {topUser&&<div style={{flex:1,minWidth:100,background:"#ffffff06",borderRadius:10,padding:"10px 12px"}}>
+          <div style={{fontSize:11,color:"#666",marginBottom:4}}>Top performer</div>
+          <Av u={topUser} s={28}/>
+          <div style={{fontSize:12,fontWeight:700,marginTop:4}}>{topUser.name?.split(" ")[0]}</div>
+          <div style={{fontSize:10,color:"#555"}}>{logCounts[topUid]} log{logCounts[topUid]!==1?"s":""} this week</div>
+        </div>}
+      </div>
+    </div>
+  );
+};
+
 // ── HOME TAB ──
-const HomeTab=({cu,checked,onCheckin,lastCheckin,feed,challenges,onLog,users,setTab,activePulse,myPulseVoted,setMyPulseVoted,activeSurvey,mySurveyDone,setMySurveyDone,iLoggedToday,nudgeCount})=>{
+const HomeTab=({cu,checked,onCheckin,lastCheckin,feed,challenges,onLog,users,setTab,activePulse,myPulseVoted,setMyPulseVoted,activeSurvey,mySurveyDone,setMySurveyDone,iLoggedToday,nudgeCount,challengeNudges})=>{
   const h=new Date().getHours();
   const greeting=h<5?"Up late 🌙":h<12?"Good morning":"Good afternoon";
   const firstName=cu.name?.split(" ")[0]||cu.name;
@@ -1017,12 +1089,16 @@ const HomeTab=({cu,checked,onCheckin,lastCheckin,feed,challenges,onLog,users,set
       <div style={{fontSize:13,color:"#888",fontWeight:500}}>{new Date().toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long"})}</div>
     </div>
 
-    {/* Nudge */}
-    {!iLoggedToday&&nudgeCount>0&&<div style={{background:"#6EE7B70d",border:"1px solid #6EE7B730",borderRadius:14,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
-      <span style={{fontSize:20}}>👀</span>
-      <div style={{flex:1,fontSize:12,color:"#aaa"}}><span style={{fontWeight:700,color:"#6EE7B7"}}>{nudgeCount} teammate{nudgeCount!==1?"s":""}</span> already logged today</div>
-      <button onClick={()=>onLog(true)} style={{background:"#6EE7B722",border:"1px solid #6EE7B744",color:"#6EE7B7",borderRadius:9,padding:"5px 12px",fontSize:11,fontWeight:700}}>Log now</button>
-    </div>}
+    {/* Per-challenge nudges */}
+    {challengeNudges&&challengeNudges.slice(0,2).map(n=>(
+      <div key={n.ch.id} style={{background:`${n.ch.color}0d`,border:`1px solid ${n.ch.color}30`,borderRadius:14,padding:"10px 14px",marginBottom:10,display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:20}}>{n.ch.icon}</span>
+        <div style={{flex:1,fontSize:12,color:"#aaa"}}>
+          <span style={{fontWeight:700,color:n.ch.color}}>{n.names}</span> logged <span style={{fontWeight:600}}>{n.ch.title}</span> today
+        </div>
+        <button onClick={()=>onLog(n.ch)} style={{background:`${n.ch.color}22`,border:`1px solid ${n.ch.color}44`,color:n.ch.color,borderRadius:9,padding:"5px 12px",fontSize:11,fontWeight:700}}>Log →</button>
+      </div>
+    ))}
 
     {/* Pulse / Survey */}
     {activePulse&&!myPulseVoted&&<PulseCard pulse={activePulse} cu={cu} onVoted={()=>setMyPulseVoted(true)}/>}
@@ -1031,6 +1107,9 @@ const HomeTab=({cu,checked,onCheckin,lastCheckin,feed,challenges,onLog,users,set
     {/* Check-in */}
     {!checked&&<CheckIn onDone={onCheckin}/>}
     {checked&&lastCheckin&&<ReadinessCard checkin={lastCheckin}/>}
+
+    {/* Weekly team digest */}
+    <WeeklyDigest feed={feed} challenges={challenges} users={users} cu={cu}/>
 
     {/* Today's challenges */}
     {active.length>0&&<>
@@ -2689,6 +2768,30 @@ export default function App({ session }) {
   const [editName,setEditName]=useState("");
   const [editRole,setEditRole]=useState("");
   const [editSaving,setEditSaving]=useState(false);
+  const [installPrompt,setInstallPrompt]=useState(null);
+  const [showInstallBanner,setShowInstallBanner]=useState(false);
+
+  // PWA install prompt
+  useEffect(()=>{
+    const handler=e=>{e.preventDefault();setInstallPrompt(e);setShowInstallBanner(true);};
+    window.addEventListener('beforeinstallprompt',handler);
+    return()=>window.removeEventListener('beforeinstallprompt',handler);
+  },[]);
+
+  // Load DB notifications
+  useEffect(()=>{
+    if(!session)return;
+    supabase.from('notifications').select('*').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(30)
+      .then(({data})=>{
+        if(data&&data.length){
+          setNotifs(n=>{
+            const existing=new Set(n.map(x=>x.id));
+            const fresh=data.filter(d=>!existing.has(d.id)).map(d=>({...d,ts:new Date(d.created_at).getTime()}));
+            return[...fresh,...n].sort((a,b)=>b.ts-a.ts);
+          });
+        }
+      });
+  },[session?.user?.id]);
 
   // Load profile
   useEffect(()=>{
@@ -2882,13 +2985,35 @@ export default function App({ session }) {
   const iLoggedToday=todayLogs.some(p=>p.uid===cu?.id);
   const todayLoggerSet=new Set(todayLogs.filter(p=>p.uid!==cu?.id).map(p=>p.uid));
   const nudgeCount=todayLoggerSet.size;
+  // Per-challenge nudges: active challenges where teammates logged today but user hasn't
+  const challengeNudges=challenges.filter(ch=>ch.active).map(ch=>{
+    const todayForCh=todayLogs.filter(p=>String(p.cid)===String(ch.id));
+    const userLogged=todayForCh.some(p=>p.uid===cu?.id);
+    if(userLogged)return null;
+    const loggers=[...new Set(todayForCh.filter(p=>p.uid!==cu?.id).map(p=>p.uid))];
+    if(!loggers.length)return null;
+    const names=loggers.slice(0,2).map(id=>allUsers.find(u=>u.id===id)?.name?.split(" ")[0]||"Someone").join(", ")+(loggers.length>2?` +${loggers.length-2}`:"");
+    return{ch,names,count:loggers.length};
+  }).filter(Boolean);
 
   return<>
     <style>{makeCSS(th)}</style>
     <div style={{position:"fixed",top:12,left:"50%",transform:"translateX(-50%)",zIndex:9999,display:"flex",flexDirection:"column",gap:7,alignItems:"center",pointerEvents:"none"}}>
       {toasts.map(t=><div key={t.id} style={{background:"#13131f",border:"1px solid #6EE7B755",borderRadius:13,padding:"9px 18px",fontSize:13,color:"#6EE7B7",backdropFilter:"blur(12px)",whiteSpace:"nowrap",animation:"ti 3s ease both"}}>{t.msg}</div>)}
     </div>
-    {showNotifs&&<><div style={{position:"fixed",inset:0,zIndex:799}} onClick={()=>setShowNotifs(false)}/><NotifsPanel notifs={notifs} onClose={()=>setShowNotifs(false)} onRead={id=>setNotifs(n=>n.map(x=>x.id===id?{...x,read:true}:x))}/></>}
+    {/* PWA install banner */}
+    {showInstallBanner&&<div style={{position:"fixed",bottom:80,left:12,right:12,zIndex:900,background:"linear-gradient(135deg,#6EE7B718,#93C5FD12)",border:"1px solid #6EE7B740",borderRadius:16,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,backdropFilter:"blur(16px)"}}>
+      <div style={{fontSize:32}}>📱</div>
+      <div style={{flex:1}}>
+        <div style={{fontWeight:800,fontSize:13,marginBottom:2}}>Add Wellcrew to your home screen</div>
+        <div style={{fontSize:11,color:"#888"}}>Quick access — works like a native app</div>
+      </div>
+      <div style={{display:"flex",gap:8,flexShrink:0}}>
+        <button onClick={()=>setShowInstallBanner(false)} style={{background:"transparent",border:"1px solid #ffffff20",color:"#666",borderRadius:9,padding:"6px 11px",fontSize:12}}>Later</button>
+        <button onClick={async()=>{if(installPrompt){await installPrompt.prompt();setInstallPrompt(null);}setShowInstallBanner(false);}} style={{background:"linear-gradient(135deg,#6EE7B7,#93C5FD)",border:"none",color:"#080810",borderRadius:9,padding:"6px 14px",fontSize:12,fontWeight:800}}>Install</button>
+      </div>
+    </div>}
+    {showNotifs&&<><div style={{position:"fixed",inset:0,zIndex:799}} onClick={()=>setShowNotifs(false)}/><NotifsPanel notifs={notifs} onClose={()=>setShowNotifs(false)} onRead={id=>{setNotifs(n=>n.map(x=>x.id===id?{...x,read:true}:x));supabase.from('notifications').update({read:true}).eq('id',id).then(()=>{});}}/></>}
     {showLog&&<LogModal onClose={()=>setShowLog(null)} challenges={challenges} cu={cu} setFeed={setFeed} notify={notify} initialChallenge={typeof showLog==="object"?showLog:null} awardBadge={awardBadge} feed={feed}/>}
     {introChallenge&&<ChallengeIntroModal challenge={introChallenge} onDone={async()=>{setIntroChallenge(null);await supabase.from('profiles').update({has_seen_intro:true}).eq('id',session.user.id);setCu(c=>({...c,has_seen_intro:true}));}}/>}
     {showEditProfile&&<Modal onClose={()=>setShowEditProfile(false)}>
@@ -2959,9 +3084,9 @@ export default function App({ session }) {
         </div>
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"14px 16px 100px"}}>
-        {tab==="home"&&<HomeTab cu={cu} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin} feed={feed} challenges={challenges} onLog={ch=>setShowLog(ch||true)} users={allUsers} setTab={setTab} activePulse={activePulse} myPulseVoted={myPulseVoted} setMyPulseVoted={setMyPulseVoted} activeSurvey={activeSurvey} mySurveyDone={mySurveyDone} setMySurveyDone={setMySurveyDone} iLoggedToday={iLoggedToday} nudgeCount={nudgeCount}/>}
+        {tab==="home"&&<HomeTab cu={cu} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin} feed={feed} challenges={challenges} onLog={ch=>setShowLog(ch||true)} users={allUsers} setTab={setTab} activePulse={activePulse} myPulseVoted={myPulseVoted} setMyPulseVoted={setMyPulseVoted} activeSurvey={activeSurvey} mySurveyDone={mySurveyDone} setMySurveyDone={setMySurveyDone} iLoggedToday={iLoggedToday} nudgeCount={nudgeCount} challengeNudges={challengeNudges}/>}
         {tab==="crew"&&<div>
-          <FeedTab feed={feed} setFeed={setFeed} challenges={challenges} users={allUsers} cu={cu} notify={notify} tips={tips} onLog={()=>setShowLog(true)}/>
+          <FeedTab feed={feed} setFeed={setFeed} challenges={challenges} users={allUsers} cu={cu} notify={notify} tips={tips} onLog={()=>setShowLog(true)} addNotif={addNotif}/>
         </div>}
         {tab==="train"&&<TrainTab challenges={challenges} feed={feed} cu={cu} onLog={ch=>setShowLog(ch)} lb={lb} users={allUsers} badges={badges} teams={teams}/>}
         {tab==="sleep"&&<SleepTab cu={cu} lastCheckin={lastCheckin}/>}

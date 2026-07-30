@@ -2601,7 +2601,10 @@ const LogModal=({onClose,challenges,cu,setFeed,notify,initialChallenge,awardBadg
   };
 
   return<Modal onClose={onClose}>
-    <div style={{fontWeight:700,fontSize:16,marginBottom:12}}>Log Progress</div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+      <div style={{fontWeight:700,fontSize:16}}>Log Progress</div>
+      <button onClick={onClose} style={{background:"transparent",border:"none",color:"#555",fontSize:18,padding:"0 4px",lineHeight:1}}>✕</button>
+    </div>
     <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:14}}>
       {a.map(c=><button key={c.id} onClick={()=>{setSel(c);setVal("");}} style={{padding:"5px 10px",borderRadius:18,border:`1px solid ${sel?.id===c.id?c.color:"#ffffff22"}`,background:sel?.id===c.id?`${c.color}22`:"transparent",color:sel?.id===c.id?c.color:"#888",fontSize:11}}>{c.icon} {c.title}</button>)}
     </div>
@@ -2879,7 +2882,10 @@ export default function App({ session }) {
     {showLog&&<LogModal onClose={()=>setShowLog(null)} challenges={challenges} cu={cu} setFeed={setFeed} notify={notify} initialChallenge={typeof showLog==="object"?showLog:null} awardBadge={awardBadge} feed={feed}/>}
     {introChallenge&&<ChallengeIntroModal challenge={introChallenge} onDone={async()=>{setIntroChallenge(null);await supabase.from('profiles').update({has_seen_intro:true}).eq('id',session.user.id);setCu(c=>({...c,has_seen_intro:true}));}}/>}
     {showEditProfile&&<Modal onClose={()=>setShowEditProfile(false)}>
-      <div style={{fontWeight:800,fontSize:17,marginBottom:4}}>✏️ Edit Profile</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+        <div style={{fontWeight:800,fontSize:17}}>✏️ Edit Profile</div>
+        <button onClick={()=>setShowEditProfile(false)} style={{background:"transparent",border:"none",color:"#555",fontSize:18,padding:"0 4px",lineHeight:1}}>✕</button>
+      </div>
       <div style={{fontSize:12,color:"#666",marginBottom:18}}>Changes are visible to your team.</div>
       <div style={{display:"flex",justifyContent:"center",marginBottom:18}}>
         <div style={{width:64,height:64,borderRadius:"50%",background:"linear-gradient(135deg,#6EE7B7,#93C5FD)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:24,color:"#080810"}}>

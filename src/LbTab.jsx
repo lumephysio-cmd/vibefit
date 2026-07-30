@@ -150,40 +150,44 @@ export default function LbTab({ lb, feed, users, challenges, cu, teams, badges: 
   // Badge pills for a user
   const userBadges = uid => (allBadges || []).filter(b => b.user_id === uid).slice(0, 3)
 
-  const TABS = [
-    { id: 'week', label: 'This Week', icon: '📅' },
-    { id: 'alltime', label: 'All Time', icon: '🏆' },
-    { id: 'teams', label: 'Teams', icon: '👥' },
+  const [timeFilter, setTimeFilter] = useState('week') // 'week' | 'alltime' within people view
+
+  const MAIN_TABS = [
+    { id: 'people',  label: 'People',  icon: '👤' },
+    { id: 'teams',   label: 'Teams',   icon: '👥' },
     { id: 'streaks', label: 'Streaks', icon: '🔥' },
   ]
 
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ fontWeight: 700, fontSize: 17 }}>Leaderboard</div>
-        {view === 'week' && weekLb.length > 0 && (
-          <div style={{ fontSize: 11, color: '#888' }}>
-            Week of {new Date(new Date().setDate(new Date().getDate() - new Date().getDay())).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
-          </div>
-        )}
-      </div>
+      <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 14 }}>Leaderboard</div>
 
-      {/* Tab switcher */}
-      <div style={{ display: 'flex', gap: 4, background: '#ffffff08', borderRadius: 12, padding: 3, marginBottom: 16, overflowX: 'auto' }}>
-        {TABS.map(t => (
+      {/* Main toggle: People | Teams | Streaks */}
+      <div style={{ display: 'flex', gap: 5, background: '#ffffff07', borderRadius: 12, padding: 3, marginBottom: 16 }}>
+        {MAIN_TABS.map(t => (
           <button key={t.id} onClick={() => setView(t.id)} style={{
-            flex: 1, minWidth: 60, padding: '6px 4px', borderRadius: 9, border: 'none',
+            flex: 1, padding: '9px 4px', borderRadius: 9, border: 'none',
             background: view === t.id ? '#ffffff18' : 'transparent',
             color: view === t.id ? '#e8e8f0' : '#666',
-            fontSize: 10, fontWeight: view === t.id ? 700 : 400,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0,
-          }}>
-            <span style={{ fontSize: 14 }}>{t.icon}</span>
-            {t.label}
-          </button>
+            fontSize: 12, fontWeight: view === t.id ? 700 : 400,
+          }}>{t.icon} {t.label}</button>
         ))}
       </div>
+
+      {/* People: week / all-time sub-toggle */}
+      {view === 'people' && (
+        <div style={{ display: 'flex', gap: 5, marginBottom: 14 }}>
+          {[['week','This Week','📅'],['alltime','All Time','🏆']].map(([id,lbl,icon]) => (
+            <button key={id} onClick={() => setTimeFilter(id)} style={{
+              padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+              border: `1px solid ${timeFilter===id ? '#6EE7B755' : '#ffffff15'}`,
+              background: timeFilter===id ? '#6EE7B722' : 'transparent',
+              color: timeFilter===id ? '#6EE7B7' : '#666',
+            }}>{icon} {lbl}</button>
+          ))}
+        </div>
+      )}
 
       {/* ── WEEK / ALL TIME VIEW ── */}
       {(view === 'week' || view === 'alltime') && (

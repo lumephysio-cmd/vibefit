@@ -25,6 +25,7 @@ const wrap = {
   alignItems: 'center',
   justifyContent: 'center',
   padding: 20,
+  fontFamily: "'Inter',system-ui,sans-serif",
 }
 
 export default function Login({ onSwitch }) {

@@ -33,13 +33,13 @@ const readinessLabel=r=>r>=80?"Peak Readiness":r>=60?"Ready to Go":r>=40?"Take I
 // ── THEME ──
 const DK={bg:"#080810",card:"#ffffff0a",cb:"#ffffff12",tx:"#e8e8f0",sub:"#666",inp:"#ffffff08",inpb:"#ffffff15",nb:"#ffffff07",na:"#ffffff18"};
 const LT={bg:"#f0f4f8",card:"#ffffff",cb:"#e2e8f0",tx:"#1a202c",sub:"#718096",inp:"#ffffff",inpb:"#cbd5e0",nb:"#e2e8f0",na:"#ffffff"};
-const makeCSS=t=>`*{box-sizing:border-box;margin:0;padding:0}body{background:${t.bg};color:${t.tx};font-family:system-ui,sans-serif;overscroll-behavior:none}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#ffffff22;border-radius:4px}input,textarea,select{background:${t.inp};border:1px solid ${t.inpb};color:${t.tx};border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;outline:none;width:100%}input:focus,textarea:focus{border-color:#6EE7B755}select option{background:#13131f}button{cursor:pointer;font-family:inherit;transition:all 0.15s}button:active{transform:scale(0.97)}@keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}@keyframes ti{0%{opacity:0;transform:translateX(-50%) translateY(-10px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0}}.fu{animation:fu 0.3s ease both}.card{background:${t.card};border:1px solid ${t.cb};border-radius:16px;padding:16px}`;
+const makeCSS=t=>`*{box-sizing:border-box;margin:0;padding:0}body{background:${t.bg};color:${t.tx};font-family:'Inter',system-ui,sans-serif;overscroll-behavior:none;-webkit-font-smoothing:antialiased}::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#ffffff18;border-radius:4px}input,textarea,select{background:${t.inp};border:1px solid ${t.inpb};color:${t.tx};border-radius:12px;padding:10px 14px;font-family:inherit;font-size:14px;outline:none;width:100%;transition:border-color 0.15s}input:focus,textarea:focus{border-color:#6EE7B766;box-shadow:0 0 0 3px #6EE7B711}select option{background:#13131f}button{cursor:pointer;font-family:inherit;transition:all 0.15s}button:active{transform:scale(0.97)}@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes ti{0%{opacity:0;transform:translateX(-50%) translateY(-8px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0}}.fu{animation:fu 0.25s ease both}.card{background:${t.card};border:1px solid ${t.cb};border-radius:18px;padding:18px;box-shadow:0 2px 12px #00000022}`;
 
 // ── ATOMS ──
 const Av=({u,s=32})=><div style={{width:s,height:s,borderRadius:"50%",background:`linear-gradient(135deg,${u.color||"#6EE7B7"}33,${u.color||"#6EE7B7"}66)`,border:`2px solid ${u.color||"#6EE7B7"}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:s*.34,fontWeight:700,color:u.color||"#6EE7B7",flexShrink:0}}>{ini(u.name)}</div>;
 const Ring=({pct,color,size=60})=>{const s=5,r=(size-s*2)/2,c=2*Math.PI*r,d=c*Math.min(pct,1);return<svg width={size} height={size} style={{transform:"rotate(-90deg)"}}><circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#ffffff0f" strokeWidth={s}/><circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={s} strokeDasharray={`${d} ${c}`} strokeLinecap="round" style={{transition:"stroke-dasharray .5s"}}/></svg>;};
 const Pill=({color,text})=><span style={{fontSize:10,background:`${color}22`,color,border:`1px solid ${color}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{text}</span>;
-const Btn=({color="#6EE7B7",text,style,...p})=><button {...p} style={{padding:"8px 16px",borderRadius:10,border:`1px solid ${color}33`,background:`${color}22`,color,fontWeight:700,fontSize:13,...style}}>{text}</button>;
+const Btn=({color="#6EE7B7",text,style,...p})=><button {...p} style={{padding:"8px 18px",borderRadius:10,border:`1px solid ${color}44`,background:`${color}18`,color,fontWeight:700,fontSize:13,letterSpacing:"-0.1px",...style}}>{text}</button>;
 const Inp=({label,...p})=><div style={{marginBottom:10}}>{label&&<div style={{fontSize:11,color:"#888",marginBottom:4}}>{label}</div>}<input {...p} style={{width:"100%",...p.style}}/></div>;
 const Modal=({onClose,children})=><div style={{position:"fixed",inset:0,background:"#000c",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onMouseDown={onClose}><div style={{background:"#13131f",border:"1px solid #ffffff18",borderRadius:18,padding:20,width:340,maxWidth:"95vw",maxHeight:"88vh",overflowY:"auto"}} onMouseDown={e=>e.stopPropagation()}>{children}</div></div>;
 const Spk=({data,color,sid})=>{const w=200,h=44,vs=data.map(d=>d.val),mn=Math.min(...vs),mx=Math.max(...vs),rng=mx-mn||1;const pts=vs.map((v,i)=>`${(i/Math.max(vs.length-1,1))*w},${h-((v-mn)/rng)*(h-6)-3}`).join(" ");return<svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none"><defs><linearGradient id={`g${sid}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.2"/><stop offset="100%" stopColor={color} stopOpacity="0"/></linearGradient></defs><polygon points={`0,${h} ${pts} ${w},${h}`} fill={`url(#g${sid})`}/><polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"/>{vs.map((v,i)=><circle key={i} cx={(i/Math.max(vs.length-1,1))*w} cy={h-((v-mn)/rng)*(h-6)-3} r="2.5" fill={color}/>)}</svg>;};
@@ -1008,9 +1008,9 @@ const HomeTab=({cu,checked,onCheckin,lastCheckin,feed,challenges,onLog,users,set
 
   return<div>
     {/* Greeting */}
-    <div style={{marginBottom:20}}>
-      <div style={{fontSize:22,fontWeight:800,marginBottom:3}}>{greeting}, {firstName} 👋</div>
-      <div style={{fontSize:12,color:"#888"}}>{new Date().toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long"})}</div>
+    <div style={{marginBottom:22}}>
+      <div style={{fontSize:26,fontWeight:800,marginBottom:4,letterSpacing:-0.5}}>{greeting}, {firstName} 👋</div>
+      <div style={{fontSize:13,color:"#888",fontWeight:500}}>{new Date().toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long"})}</div>
     </div>
 
     {/* Nudge */}
@@ -1030,9 +1030,9 @@ const HomeTab=({cu,checked,onCheckin,lastCheckin,feed,challenges,onLog,users,set
 
     {/* Today's challenges */}
     {active.length>0&&<>
-      <div style={{fontWeight:700,fontSize:14,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{fontWeight:700,fontSize:15,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span>Today's challenge</span>
-        <button onClick={()=>setTab("train")} style={{fontSize:11,color:"#6EE7B7",background:"transparent",border:"none",cursor:"pointer",fontWeight:700}}>Details →</button>
+        <button onClick={()=>setTab("train")} style={{fontSize:12,color:"#6EE7B7",background:"transparent",border:"none",cursor:"pointer",fontWeight:600}}>Details →</button>
       </div>
       {active.slice(0,1).map(ch=>{
         const myPosts=feed.filter(p=>p.uid===cu.id&&String(p.cid)===String(ch.id)&&new Date(p.ts)>=weekStart);
@@ -1057,19 +1057,19 @@ const HomeTab=({cu,checked,onCheckin,lastCheckin,feed,challenges,onLog,users,set
 
     {/* Recent crew */}
     {recentPosts.length>0&&<>
-      <div style={{fontWeight:700,fontSize:14,marginBottom:10,marginTop:6,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div style={{fontWeight:700,fontSize:15,marginBottom:10,marginTop:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span>Crew activity</span>
-        <button onClick={()=>setTab("crew")} style={{fontSize:11,color:"#6EE7B7",background:"transparent",border:"none",cursor:"pointer",fontWeight:700}}>See all →</button>
+        <button onClick={()=>setTab("crew")} style={{fontSize:12,color:"#6EE7B7",background:"transparent",border:"none",cursor:"pointer",fontWeight:600}}>See all →</button>
       </div>
       {recentPosts.map(post=>{
         const u=users.find(x=>x.id===post.uid)||{name:"?",color:"#888"};
         const ch=challenges.find(x=>String(x.id)===String(post.cid));
         if(!ch)return null;
-        return<div key={post.id} style={{display:"flex",gap:9,alignItems:"center",padding:"10px 12px",background:"#ffffff05",borderRadius:12,marginBottom:6,border:"1px solid #ffffff08"}}>
-          <Av u={u} s={32}/>
+        return<div key={post.id} style={{display:"flex",gap:10,alignItems:"center",padding:"12px 14px",background:"#ffffff06",borderRadius:14,marginBottom:7,border:"1px solid #ffffff0a"}}>
+          <Av u={u} s={36}/>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:12,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name?.split(" ")[0]} · {ch.icon} {ch.title}</div>
-            <div style={{fontSize:10,color:"#888"}}>{post.val>0?`${post.val} ${ch.unit}`:"Completed"} · {ago(post.ts)}</div>
+            <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name?.split(" ")[0]} · {ch.icon} {ch.title}</div>
+            <div style={{fontSize:11,color:"#888",marginTop:2}}>{post.val>0?`${post.val} ${ch.unit}`:"Completed"} · {ago(post.ts)}</div>
           </div>
         </div>;
       })}
@@ -2832,8 +2832,10 @@ export default function App({ session }) {
   },[cu,notify,awardBadge]);
 
   if(profileLoading) return(
-    <div style={{minHeight:"100vh",background:"#080810",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{fontWeight:800,fontSize:24,background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>WELLCREW</div>
+    <div style={{minHeight:"100vh",background:"#080810",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,fontFamily:"'Inter',system-ui,sans-serif"}}>
+      <div style={{fontWeight:900,fontSize:26,background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:-1}}>WELLCREW</div>
+      <div style={{display:"flex",gap:6}}>{[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:"#6EE7B7",opacity:0.4,animation:`pu 1.2s ease-in-out ${i*0.2}s infinite`}}/>)}</div>
+      <style>{`@keyframes pu{0%,80%,100%{transform:scale(0.6);opacity:0.3}40%{transform:scale(1);opacity:1}}`}</style>
     </div>
   );
 
@@ -2883,16 +2885,16 @@ export default function App({ session }) {
     </Modal>}
 
     <div style={{maxWidth:480,margin:"0 auto",minHeight:"100vh",display:"flex",flexDirection:"column"}}>
-      <div style={{padding:"13px 13px 0",position:"sticky",top:0,zIndex:40,background:`linear-gradient(to bottom,${th.bg} 85%,transparent)`}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+      <div style={{padding:"14px 16px 0",position:"sticky",top:0,zIndex:40,background:`linear-gradient(to bottom,${th.bg} 80%,transparent)`,backdropFilter:"blur(12px)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <div>
-            <div style={{fontWeight:800,fontSize:21,background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:-.5}}>WELLCREW</div>
-            <div style={{fontSize:9,color:th.sub,marginTop:1}}>Company Wellness Hub</div>
+            <div style={{fontWeight:900,fontSize:22,background:"linear-gradient(90deg,#6EE7B7,#93C5FD)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:-0.8}}>WELLCREW</div>
+            <div style={{fontSize:11,color:th.sub,marginTop:1,fontWeight:500,letterSpacing:0.1}}>Company Wellness Hub</div>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
-            <button onClick={()=>setDark(v=>!v)} style={{width:30,height:30,borderRadius:8,background:th.nb,border:`1px solid ${th.cb}`,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>{dark?"☀️":"🌙"}</button>
-            <div onClick={()=>setShowNotifs(v=>!v)} style={{position:"relative",cursor:"pointer",width:30,height:30,borderRadius:8,background:th.nb,border:`1px solid ${th.cb}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>🔔{unread>0&&<div style={{position:"absolute",top:-3,right:-3,width:13,height:13,borderRadius:"50%",background:"#F9A8D4",fontSize:7,fontWeight:800,color:"#000",display:"flex",alignItems:"center",justifyContent:"center"}}>{unread}</div>}</div>
-            {myR>0&&<div style={{fontSize:10,color:"#6EE7B7",background:"#6EE7B715",border:"1px solid #6EE7B730",borderRadius:18,padding:"2px 7px",fontWeight:700}}>#{myR}</div>}
+            <button onClick={()=>setDark(v=>!v)} style={{width:34,height:34,borderRadius:10,background:th.nb,border:`1px solid ${th.cb}`,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>{dark?"☀️":"🌙"}</button>
+            <div onClick={()=>setShowNotifs(v=>!v)} style={{position:"relative",cursor:"pointer",width:34,height:34,borderRadius:10,background:th.nb,border:`1px solid ${th.cb}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>🔔{unread>0&&<div style={{position:"absolute",top:-4,right:-4,width:15,height:15,borderRadius:"50%",background:"#F9A8D4",fontSize:8,fontWeight:800,color:"#000",display:"flex",alignItems:"center",justifyContent:"center"}}>{unread}</div>}</div>
+            {myR>0&&<div style={{fontSize:11,color:"#6EE7B7",background:"#6EE7B715",border:"1px solid #6EE7B730",borderRadius:18,padding:"3px 8px",fontWeight:700}}>#{myR}</div>}
             <div style={{position:"relative"}}>
               <div onClick={()=>setShowAvatarMenu(v=>!v)} style={{cursor:"pointer"}}><Av u={cu} s={30}/></div>
               {showAvatarMenu&&<><div style={{position:"fixed",inset:0,zIndex:149}} onClick={()=>setShowAvatarMenu(false)}/><div style={{position:"absolute",top:36,right:0,background:"#1a1a2e",border:"1px solid #ffffff18",borderRadius:14,padding:8,minWidth:180,zIndex:150,boxShadow:"0 8px 32px #000a"}}>
@@ -2915,11 +2917,11 @@ export default function App({ session }) {
             </div>
           </div>
         </div>
-        <div style={{display:"flex",gap:2,background:th.nb,borderRadius:12,padding:3,overflowX:"auto",marginBottom:2}}>
-          {NAV.map(([id,lbl,icon])=><button key={id} onClick={()=>setTab(id)} style={{flexShrink:0,flex:1,minWidth:38,padding:"5px 2px",borderRadius:8,border:"none",background:tab===id?th.na:"transparent",color:tab===id?th.tx:th.sub,fontSize:8,fontWeight:tab===id?700:400,display:"flex",flexDirection:"column",alignItems:"center",gap:1}}><span style={{fontSize:11}}>{icon}</span>{lbl}</button>)}
+        <div style={{display:"flex",gap:1,background:th.nb,borderRadius:14,padding:3,overflowX:"auto",marginBottom:2}}>
+          {NAV.map(([id,lbl,icon])=><button key={id} onClick={()=>setTab(id)} style={{flexShrink:0,flex:1,minWidth:44,padding:"7px 2px",borderRadius:11,border:"none",background:tab===id?th.na:"transparent",color:tab===id?th.tx:th.sub,fontSize:10,fontWeight:tab===id?700:500,display:"flex",flexDirection:"column",alignItems:"center",gap:2,letterSpacing:"-0.2px"}}><span style={{fontSize:16}}>{icon}</span>{lbl}</button>)}
         </div>
       </div>
-      <div style={{flex:1,overflowY:"auto",padding:"12px 13px 90px"}}>
+      <div style={{flex:1,overflowY:"auto",padding:"14px 16px 100px"}}>
         {tab==="home"&&<HomeTab cu={cu} checked={checked} onCheckin={handleCheckin} lastCheckin={lastCheckin} feed={feed} challenges={challenges} onLog={ch=>setShowLog(ch||true)} users={allUsers} setTab={setTab} activePulse={activePulse} myPulseVoted={myPulseVoted} setMyPulseVoted={setMyPulseVoted} activeSurvey={activeSurvey} mySurveyDone={mySurveyDone} setMySurveyDone={setMySurveyDone} iLoggedToday={iLoggedToday} nudgeCount={nudgeCount}/>}
         {tab==="crew"&&<div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>

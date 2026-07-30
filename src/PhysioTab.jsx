@@ -706,6 +706,87 @@ const BreathGuide = ({ t }) => {
   );
 };
 
+// ── ASK PHYSIO SECTION ───────────────────────────────────────────────────────
+function AskPhysioSection({ cu }) {
+  const [question, setQuestion] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [myQs, setMyQs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.from('physio_questions')
+      .select('*').eq('user_id', cu.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { setMyQs(data || []); setLoading(false); });
+  }, [cu.id]);
+
+  const submit = async () => {
+    if (!question.trim()) return;
+    setSending(true);
+    const { data } = await supabase.from('physio_questions')
+      .insert({ user_id: cu.id, company_id: cu.company_id, question: question.trim() })
+      .select().single();
+    if (data) { setMyQs(q => [data, ...q]); setSent(true); setQuestion(''); }
+    setSending(false);
+  };
+
+  return (
+    <div>
+      {/* Ask form */}
+      <div style={{ background: 'linear-gradient(135deg,#6EE7B712,#93C5FD08)', border: '1px solid #6EE7B730', borderRadius: 16, padding: 16, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12 }}>
+          <span style={{ fontSize: 24, flexShrink: 0 }}>👩‍⚕️</span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 3 }}>Ask Physio Brooke</div>
+            <div style={{ fontSize: 12, color: '#888', lineHeight: 1.5 }}>Got a pain, posture question, or something you've been putting off asking? Send it through — Brooke will reply personally.</div>
+          </div>
+        </div>
+        {sent && <div style={{ background: '#6EE7B720', border: '1px solid #6EE7B740', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#6EE7B7', fontWeight: 700, marginBottom: 10 }}>✅ Question sent! Brooke will get back to you soon.</div>}
+        <textarea
+          value={question}
+          onChange={e => { setQuestion(e.target.value); setSent(false); }}
+          placeholder="e.g. My lower back aches after 2 hours at my desk — what should I do?"
+          rows={3}
+          style={{ width: '100%', background: '#ffffff08', border: '1px solid #ffffff15', color: '#e8e8f0', borderRadius: 10, padding: '10px 14px', fontSize: 13, fontFamily: 'inherit', resize: 'none', outline: 'none', marginBottom: 10 }}
+        />
+        <button
+          onClick={submit}
+          disabled={sending || !question.trim()}
+          style={{ width: '100%', padding: '11px', borderRadius: 10, border: 'none', background: question.trim() ? 'linear-gradient(135deg,#6EE7B7,#93C5FD)' : '#ffffff10', color: question.trim() ? '#080810' : '#555', fontWeight: 800, fontSize: 14, cursor: question.trim() ? 'pointer' : 'default' }}
+        >{sending ? 'Sending…' : 'Send Question'}</button>
+      </div>
+
+      {/* Past questions */}
+      {loading && <div style={{ textAlign: 'center', color: '#555', fontSize: 13, padding: 20 }}>Loading…</div>}
+      {!loading && myQs.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '30px 20px', color: '#555' }}>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>
+          <div style={{ fontSize: 13 }}>No questions yet — ask anything above!</div>
+        </div>
+      )}
+      {myQs.map(q => (
+        <div key={q.id} className="card" style={{ marginBottom: 10, borderColor: q.answer ? '#6EE7B733' : '#ffffff12' }}>
+          <div style={{ fontSize: 13, color: '#e8e8f0', fontWeight: 600, marginBottom: q.answer ? 10 : 0, lineHeight: 1.5 }}>
+            💬 {q.question}
+          </div>
+          {q.answer ? (
+            <div style={{ background: '#6EE7B710', border: '1px solid #6EE7B725', borderRadius: 10, padding: '10px 13px', display: 'flex', gap: 8 }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>👩‍⚕️</span>
+              <div>
+                <div style={{ fontSize: 10, color: '#6EE7B7', fontWeight: 700, marginBottom: 3 }}>PHYSIO BROOKE</div>
+                <div style={{ fontSize: 12, color: '#bbb', lineHeight: 1.65 }}>{q.answer}</div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: '#555', marginTop: 6 }}>⏳ Awaiting reply from Physio Brooke</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── MAIN COMPONENT ─────────────────────────────────────────────────────────
 export default function PhysioTab({ cu }) {
   const [sec, setSec] = useState('stretches');
@@ -743,7 +824,7 @@ export default function PhysioTab({ cu }) {
 
       {/* Sub-nav */}
       <div style={{ display: 'flex', gap: 5, marginBottom: 16, background: '#ffffff07', borderRadius: 11, padding: 3 }}>
-        {[['stretches','🧘 Stretches'],['posture','📐 Posture'],['breathing','🫁 Breathe']].map(([id,lbl])=>(
+        {[['stretches','🧘 Stretches'],['posture','📐 Posture'],['breathing','🫁 Breathe'],['ask','💬 Ask Physio']].map(([id,lbl])=>(
           <button key={id} onClick={()=>setSec(id)} style={{
             flex:1, padding:'8px 4px', borderRadius:8, border:'none',
             background:sec===id?'#6EE7B722':'transparent',
@@ -889,6 +970,9 @@ export default function PhysioTab({ cu }) {
           </div>
         </div>
       )}
+
+      {/* ── ASK PHYSIO ── */}
+      {sec === 'ask' && <AskPhysioSection cu={cu} />}
 
       {/* ── BREATHING ── */}
       {sec==='breathing' && (

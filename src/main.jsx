@@ -6,6 +6,7 @@ import Login from './Login'
 import Signup from './Signup'
 import Join from './Join'
 import Landing from './Landing'
+import RegisterCompany from './RegisterCompany'
 
 // ── RESET PASSWORD SCREEN ──
 // Shown when user clicks the reset link in their email (Supabase fires PASSWORD_RECOVERY)
@@ -136,7 +137,7 @@ function ResetPassword({ onDone }) {
 function Root() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [screen, setScreen]   = useState('landing') // 'landing' | 'login' | 'signup'
+  const [screen, setScreen]   = useState('landing') // 'landing' | 'login' | 'signup' | 'register'
   const [resetMode, setResetMode] = useState(false)  // true = show ResetPassword screen
 
   // Check for invite link in URL
@@ -172,13 +173,21 @@ function Root() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
-      // When user clicks the reset link in their email, Supabase fires this event
-      if (event === 'PASSWORD_RECOVERY') {
-        setResetMode(true)
-      }
-      // After they update their password, clear reset mode
-      if (event === 'USER_UPDATED') {
-        setResetMode(false)
+      if (event === 'PASSWORD_RECOVERY') setResetMode(true)
+      if (event === 'USER_UPDATED') setResetMode(false)
+      // Apply pending invite profile updates stored in metadata after email confirmation
+      if (event === 'SIGNED_IN' && session?.user) {
+        const meta = session.user.user_metadata || {}
+        const updates = {}
+        if (meta.pending_team_id) updates.team_id = meta.pending_team_id
+        if (meta.pending_company_id) updates.company_id = meta.pending_company_id
+        if (meta.pending_is_admin) updates.is_admin = true
+        if (Object.keys(updates).length > 0) {
+          supabase.from('profiles').update(updates).eq('id', session.user.id).then(() => {
+            // Clear the pending invite from metadata so it doesn't re-apply on future logins
+            supabase.auth.updateUser({ data: { pending_team_id: null, pending_company_id: null, pending_is_admin: false } })
+          })
+        }
       }
     })
 
@@ -203,9 +212,10 @@ function Root() {
 
   // Not logged in
   if (!session) {
+    if (screen === 'register') return <RegisterCompany onBack={() => setScreen('login')} />
     if (screen === 'signup') return <Signup onSwitch={() => setScreen('login')} inviteCode={null} inviteTeamId={null} />
     if (screen === 'login')  return <Login onSwitch={() => setScreen('signup')} />
-    return <Landing onSignup={() => setScreen('signup')} onLogin={() => setScreen('login')} />
+    return <Landing onSignup={() => setScreen('register')} onLogin={() => setScreen('login')} />
   }
 
   // Logged in

@@ -167,9 +167,10 @@ export default function LbTab({ lb, feed, users, challenges, cu, teams, badges: 
       <div style={{ display: 'flex', gap: 5, background: '#ffffff07', borderRadius: 12, padding: 3, marginBottom: 16 }}>
         {MAIN_TABS.map(t => (
           <button key={t.id} onClick={() => setView(t.id)} style={{
-            flex: 1, padding: '9px 4px', borderRadius: 9, border: 'none',
-            background: view === t.id ? '#ffffff18' : 'transparent',
-            color: view === t.id ? '#e8e8f0' : '#666',
+            flex: 1, padding: '9px 4px', borderRadius: 9,
+            border: view === t.id ? '1px solid #6EE7B733' : '1px solid transparent',
+            background: view === t.id ? '#6EE7B728' : 'transparent',
+            color: view === t.id ? '#6EE7B7' : '#666',
             fontSize: 12, fontWeight: view === t.id ? 700 : 400,
           }}>{t.icon} {t.label}</button>
         ))}

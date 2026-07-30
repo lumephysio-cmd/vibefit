@@ -1072,7 +1072,11 @@ const HomeTab=({cu,checked,onCheckin,lastCheckin,feed,challenges,onLog,users,set
           <Av u={u} s={36}/>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name?.split(" ")[0]} · {ch.icon} {ch.title}</div>
-            <div style={{fontSize:11,color:"#888",marginTop:2}}>{post.val>0?`${post.val} ${ch.unit}`:"Completed"} · {ago(post.ts)}</div>
+            <div style={{fontSize:11,color:"#888",marginTop:2}}>{ago(post.ts)}</div>
+          </div>
+          <div style={{textAlign:"right",flexShrink:0}}>
+            <div style={{fontSize:13,fontWeight:800,color:ch.color}}>{post.val>0?`${post.val.toLocaleString()}`:"✓"}</div>
+            {post.val>0&&<div style={{fontSize:9,color:"#555"}}>{ch.unit}</div>}
           </div>
         </div>;
       })}
@@ -1139,7 +1143,10 @@ const ChalTab=({challenges,feed,cu,onLog})=>{
             <div style={{fontWeight:800,fontSize:15,color:ch.color}}>{ch.title}</div>
             <div style={{fontSize:11,color:"#888",marginTop:2}}>{ch.desc}</div>
           </div>
-          <Ring pct={pct} color={ch.color}/>
+          <div style={{position:"relative",width:60,height:60,flexShrink:0}}>
+            <Ring pct={pct} color={ch.color}/>
+            <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:ch.color}}>{Math.round(pct*100)}%</div>
+          </div>
         </div>
 
         {isHabit

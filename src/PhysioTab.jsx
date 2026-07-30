@@ -826,9 +826,10 @@ export default function PhysioTab({ cu }) {
       <div style={{ display: 'flex', gap: 5, marginBottom: 16, background: '#ffffff07', borderRadius: 11, padding: 3 }}>
         {[['stretches','🧘 Stretches'],['posture','📐 Posture'],['breathing','🫁 Breathe'],['ask','💬 Ask Physio']].map(([id,lbl])=>(
           <button key={id} onClick={()=>setSec(id)} style={{
-            flex:1, padding:'8px 4px', borderRadius:8, border:'none',
-            background:sec===id?'#6EE7B722':'transparent',
-            color:sec===id?'#6EE7B7':'#888',
+            flex:1, padding:'8px 4px', borderRadius:8,
+            border:sec===id?'1px solid #6EE7B733':'1px solid transparent',
+            background:sec===id?'#6EE7B728':'transparent',
+            color:sec===id?'#6EE7B7':'#666',
             fontWeight:sec===id?700:400, fontSize:12,
           }}>{lbl}</button>
         ))}

@@ -161,7 +161,13 @@ export default function LbTab({ lb, feed, users, challenges, cu, teams, badges: 
   return (
     <div>
       {/* Header */}
-      <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 14 }}>Leaderboard</div>
+      <div style={{ background: 'linear-gradient(135deg,#FCD34D15,#6EE7B710)', border: '1px solid #FCD34D25', borderRadius: 14, padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 24 }}>🥇</span>
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 17, color: '#FCD34D' }}>Leaderboard</div>
+          <div style={{ fontSize: 11, color: '#666' }}>Top performers this week</div>
+        </div>
+      </div>
 
       {/* Main toggle: People | Teams | Streaks */}
       <div style={{ display: 'flex', gap: 5, background: '#ffffff07', borderRadius: 12, padding: 3, marginBottom: 16 }}>

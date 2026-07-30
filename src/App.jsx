@@ -1127,7 +1127,13 @@ const ChalTab=({challenges,feed,cu,onLog})=>{
   const weekDays=Array.from({length:7},(_,i)=>{const d=new Date(weekStart);d.setDate(d.getDate()+i);return d.toDateString();});
 
   return<div>
-    <div style={{fontWeight:700,fontSize:17,marginBottom:14}}>Active Challenges</div>
+    <div style={{background:"linear-gradient(135deg,#6EE7B715,#FCD34D08)",border:"1px solid #6EE7B725",borderRadius:14,padding:"14px 16px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
+      <span style={{fontSize:24}}>🏋️</span>
+      <div>
+        <div style={{fontWeight:800,fontSize:17,color:"#6EE7B7"}}>Active Challenges</div>
+        <div style={{fontSize:11,color:"#666"}}>Log your progress to move up the board</div>
+      </div>
+    </div>
     {a.map(ch=>{
       const isHabit=ch.type==="habit";
       // Only count this week's logs (weekly reset every Monday)

@@ -1295,6 +1295,10 @@ const MsgTab=({cu,users})=>{
         <div style={{fontWeight:700,fontSize:13}}>{dm.name}</div>
       </div>
       <div ref={ref} style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:7,paddingBottom:10}}>
+        {dmMsgs.length===0&&<div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,opacity:0.5,paddingTop:48}}>
+          <div style={{fontSize:36}}>💬</div>
+          <div style={{fontSize:13,color:"#888"}}>No messages yet — say hi!</div>
+        </div>}
         {dmMsgs.map((msg,i)=>{
           const mine=msg.from_id===cu.id;
           return<div key={msg.id||i} style={{display:"flex",justifyContent:mine?"flex-end":"flex-start"}}>

@@ -1758,12 +1758,22 @@ const save=()=>{const today=new Date().toLocaleDateString("en-US",{month:"short"
 return<div>
   {!checked&&<CheckIn onDone={onCheckin}/>}
   {checked&&lastCheckin&&<ReadinessCard checkin={lastCheckin}/>}
-  <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12}}><Av u={cu} s={50}/><div><div style={{fontWeight:800,fontSize:18}}>{cu.name}</div><div style={{fontSize:12,color:"#888"}}>{cu.role}{cu.is_admin?" · 👑 Admin":""}</div><div style={{fontSize:10,color:"#6EE7B7",marginTop:2}}>🔒 Private</div></div></div>
+  <div className="card" style={{marginBottom:12,background:"linear-gradient(135deg,#ffffff0a,#6EE7B708)",display:"flex",gap:12,alignItems:"center"}}>
+    <Av u={cu} s={52}/>
+    <div style={{flex:1}}>
+      <div style={{fontWeight:800,fontSize:18,marginBottom:2}}>{cu.name}</div>
+      <div style={{fontSize:12,color:"#888"}}>{cu.role}{cu.is_admin?" · 👑 Admin":""}</div>
+      <div style={{display:"flex",gap:6,marginTop:6}}>
+        <span style={{fontSize:10,background:"#6EE7B715",border:"1px solid #6EE7B733",borderRadius:20,padding:"2px 9px",color:"#6EE7B7",fontWeight:700}}>🔒 Private</span>
+        {cu.team_id&&<span style={{fontSize:10,background:"#93C5FD15",border:"1px solid #93C5FD33",borderRadius:20,padding:"2px 9px",color:"#93C5FD",fontWeight:700}}>Member</span>}
+      </div>
+    </div>
+  </div>
   <MyProgressCard cu={cu} lb={lb}/>
   <BadgesGrid badges={badges||[]} cu={cu}/>
   <ErgonomicsCheck cu={cu} notify={notify} awardBadge={awardBadge}/>
   <SymptomLogSection cu={cu} notify={notify}/>
-  <div className="card"><div style={{fontWeight:700,marginBottom:12}}>Log Mood</div><div style={{fontSize:11,color:"#888",marginBottom:6}}>Today's mood: <span style={{color:"#F9A8D4",fontWeight:700}}>{["😔","😕","😐","🙂","😄"][nm-1]}</span></div><div style={{display:"flex",gap:4,marginBottom:12}}>{[1,2,3,4,5].map(v=><button key={v} onClick={()=>setNm(v)} style={{flex:1,padding:"6px 0",borderRadius:9,border:`1px solid ${nm===v?"#F9A8D455":"#ffffff15"}`,background:nm===v?"#F9A8D420":"transparent",fontSize:15}}>{["😔","😕","😐","🙂","😄"][v-1]}</button>)}</div><button onClick={save} style={{width:"100%",background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",border:"1px solid #6EE7B755",color:"#6EE7B7",padding:"11px",borderRadius:11,fontWeight:700}}>🔒 Save Privately</button></div>
+  <div className="card"><div style={{fontWeight:700,marginBottom:12,fontSize:14}}>😊 Log Mood</div><div style={{fontSize:11,color:"#888",marginBottom:6}}>Today's mood: <span style={{color:"#F9A8D4",fontWeight:700}}>{["😔","😕","😐","🙂","😄"][nm-1]}</span></div><div style={{display:"flex",gap:4,marginBottom:12}}>{[1,2,3,4,5].map(v=><button key={v} onClick={()=>setNm(v)} style={{flex:1,padding:"6px 0",borderRadius:9,border:`1px solid ${nm===v?"#F9A8D455":"#ffffff15"}`,background:nm===v?"#F9A8D420":"transparent",fontSize:15}}>{["😔","😕","😐","🙂","😄"][v-1]}</button>)}</div><button onClick={save} style={{width:"100%",background:"linear-gradient(135deg,#6EE7B733,#93C5FD22)",border:"1px solid #6EE7B755",color:"#6EE7B7",padding:"11px",borderRadius:11,fontWeight:700}}>🔒 Save Privately</button></div>
 </div>;};
 
 // ── ADMIN TAB ──

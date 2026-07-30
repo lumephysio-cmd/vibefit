@@ -165,15 +165,18 @@ export default function LbTab({ lb, feed, users, challenges, cu, teams, badges: 
 
       {/* Main toggle: People | Teams | Streaks */}
       <div style={{ display: 'flex', gap: 5, background: '#ffffff07', borderRadius: 12, padding: 3, marginBottom: 16 }}>
-        {MAIN_TABS.map(t => (
-          <button key={t.id} onClick={() => setView(t.id)} style={{
-            flex: 1, padding: '9px 4px', borderRadius: 9,
-            border: view === t.id ? '1px solid #6EE7B733' : '1px solid transparent',
-            background: view === t.id ? '#6EE7B728' : 'transparent',
-            color: view === t.id ? '#6EE7B7' : '#666',
-            fontSize: 12, fontWeight: view === t.id ? 700 : 400,
-          }}>{t.icon} {t.label}</button>
-        ))}
+        {MAIN_TABS.map(t => {
+          const isActive = view === t.id || (t.id === 'people' && (view === 'week' || view === 'alltime'))
+          return (
+            <button key={t.id} onClick={() => setView(t.id === 'people' ? 'week' : t.id)} style={{
+              flex: 1, padding: '9px 4px', borderRadius: 9,
+              border: isActive ? '1px solid #6EE7B733' : '1px solid transparent',
+              background: isActive ? '#6EE7B728' : 'transparent',
+              color: isActive ? '#6EE7B7' : '#666',
+              fontSize: 12, fontWeight: isActive ? 700 : 400,
+            }}>{t.icon} {t.label}</button>
+          )
+        })}
       </div>
 
       {/* People: week / all-time sub-toggle */}

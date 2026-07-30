@@ -905,7 +905,6 @@ const FeedTab=({feed,setFeed,challenges,users,cu,notify,tips=[],onLog,addNotif})
           const ch=challenges.find(c=>String(c.id)===String(p.cid));
           const notifText=`${senderName} reacted ${emoji} to your ${ch?ch.icon+" "+ch.title:"post"}`;
           supabase.from('notifications').insert({user_id:p.uid,type:'reaction',text:notifText}).then(()=>{});
-          if(addNotif)addNotif('reaction',notifText);
         }
         return{...p,rx:{...p.rx,[emoji]:cur.includes(cu.id)?cur.filter(x=>x!==cu.id):[...cur,cu.id]}};
       });

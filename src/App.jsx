@@ -80,7 +80,7 @@ const CheckIn=({onDone})=>{
   const Dots=({c})=>(
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
       <div style={{fontWeight:800,fontSize:13}}>🌅 Daily Check-In</div>
-      <div style={{display:"flex",gap:4}}>{STEPS.map((_,i)=><div key={i} style={{width:18,height:3,borderRadius:2,background:i<step?c.color:"#ffffff15"}}/>)}</div>
+      <div style={{display:"flex",gap:4}}>{STEPS.map((_,i)=><div key={i} style={{width:i===step?24:18,height:3,borderRadius:2,background:i<step?c.color:i===step?c.color+"88":"#ffffff15",transition:"all .2s"}}/>)}</div>
     </div>
   );
   // Done screen
@@ -144,7 +144,8 @@ const CheckIn=({onDone})=>{
         <div style={{width:`${Math.min(100,(sleepHours/8)*100)}%`,height:"100%",background:cur.color,borderRadius:4,transition:"width .3s"}}/>
       </div>
       <div style={{fontSize:11,textAlign:"center",marginBottom:14,color:sleepHours>=7?cur.color:"#888"}}>{sleepHours>=8?"✅ Great sleep!":sleepHours>=7?"Good rest — above average":"Aim for 7–9 hours"}</div>
-      <button disabled={!scores[cur.k]} onClick={()=>setStep(s=>s+1)} style={{width:"100%",padding:"11px",borderRadius:11,border:`1px solid ${cur.color}44`,background:scores[cur.k]?`${cur.color}18`:"#ffffff08",color:scores[cur.k]?cur.color:"#555",fontWeight:800,fontSize:14,opacity:scores[cur.k]?1:.5}}>Next →</button>
+      {!scores[cur.k]&&<div style={{fontSize:11,color:"#555",textAlign:"center",marginBottom:6}}>↑ Select a rating to continue</div>}
+      <button disabled={!scores[cur.k]} onClick={()=>setStep(s=>s+1)} style={{width:"100%",padding:"11px",borderRadius:11,border:`1px solid ${scores[cur.k]?cur.color+"55":"#ffffff15"}`,background:scores[cur.k]?`${cur.color}22`:"#ffffff06",color:scores[cur.k]?cur.color:"#666",fontWeight:800,fontSize:14}}>Next →</button>
     </div>
   );
   // Energy / mood — emoji, auto-advance
@@ -1042,17 +1043,17 @@ const HomeTab=({cu,checked,onCheckin,lastCheckin,feed,challenges,onLog,users,set
         const tot=myPosts.reduce((s,p)=>s+p.val,0);
         const pct=Math.min(1,ch.type==="habit"?myPosts.filter(p=>new Date(p.ts).toDateString()===new Date().toDateString()).length:tot/ch.goal);
         const loggedToday=myPosts.some(p=>new Date(p.ts).toDateString()===new Date().toDateString());
-        return<div key={ch.id} className="card" style={{marginBottom:8,display:"flex",gap:10,alignItems:"center",borderColor:`${ch.color}22`}}>
+        return<div key={ch.id} className="card" style={{marginBottom:8,display:"flex",gap:10,alignItems:"center",borderColor:`${ch.color}33`,borderLeft:`3px solid ${ch.color}88`}}>
           <div style={{fontSize:24,flexShrink:0}}>{ch.icon}</div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontWeight:700,fontSize:13,marginBottom:5}}>{ch.title}</div>
-            <div style={{background:"#ffffff08",borderRadius:4,height:3,marginBottom:4}}>
-              <div style={{width:`${pct*100}%`,height:"100%",background:ch.color,borderRadius:4,transition:"width .4s"}}/>
+            <div style={{background:"#ffffff0a",borderRadius:4,height:4,marginBottom:4}}>
+              <div style={{width:`${pct*100}%`,height:"100%",background:ch.color,borderRadius:4,transition:"width .4s",minWidth:pct>0?4:0}}/>
             </div>
             <div style={{fontSize:10,color:"#888"}}>{ch.type!=="habit"?`${tot.toLocaleString()} / ${ch.goal.toLocaleString()} ${ch.unit}`:`${pct===1?"Done!":"Not logged yet"}`}</div>
           </div>
-          <button onClick={()=>onLog(ch)} style={{background:loggedToday?"#ffffff08":`${ch.color}22`,border:`1px solid ${loggedToday?"#ffffff10":ch.color+"44"}`,color:loggedToday?"#555":ch.color,borderRadius:10,padding:"7px 13px",fontSize:12,fontWeight:700,flexShrink:0}}>
-            {loggedToday?"✓":"+ Log"}
+          <button onClick={()=>onLog(ch)} style={{background:loggedToday?"#6EE7B712":`${ch.color}28`,border:`1px solid ${loggedToday?"#6EE7B740":ch.color+"55"}`,color:loggedToday?"#6EE7B7":ch.color,borderRadius:10,padding:"7px 13px",fontSize:12,fontWeight:700,flexShrink:0}}>
+            {loggedToday?"✓ Done":"+ Log"}
           </button>
         </div>;
       })}

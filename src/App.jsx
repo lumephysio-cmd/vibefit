@@ -621,7 +621,7 @@ const ErgonomicsCheck=({cu,notify,awardBadge})=>{
   return<div style={wrap}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
       <div style={{fontWeight:800,fontSize:13}}>🪑 Ergonomics Check</div>
-      <div style={{display:"flex",gap:3}}>{STEPS.map((_,i)=><div key={i} style={{width:18,height:3,borderRadius:2,background:i<step?"#C4B5FD":"#ffffff15"}}/>)}</div>
+      <div style={{display:"flex",gap:3}}>{STEPS.map((_,i)=><div key={i} style={{width:i===step?24:18,height:3,borderRadius:2,background:i<step?"#C4B5FD":i===step?"#C4B5FD88":"#ffffff15",transition:"all .2s"}}/>)}</div>
     </div>
     <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>{cur.q}</div>
     <div style={{display:"flex",flexDirection:"column",gap:7}}>
@@ -722,7 +722,7 @@ const SurveyCard=({survey,cu,onDone})=>{
           <span style={{fontWeight:800,fontSize:12,color:"#93C5FD"}}>{survey.title||"WELLBEING SURVEY"}</span>
           <span style={{fontSize:9,background:"#6EE7B722",color:"#6EE7B7",border:"1px solid #6EE7B733",borderRadius:20,padding:"1px 7px",fontWeight:700}}>ANONYMOUS</span>
         </div>
-        <div style={{display:"flex",gap:4}}>{SURVEY_QS.map((_,i)=><div key={i} style={{width:18,height:3,borderRadius:2,background:i<step?"#93C5FD":i===step?"#93C5FD88":"#ffffff15"}}/>)}</div>
+        <div style={{display:"flex",gap:4}}>{SURVEY_QS.map((_,i)=><div key={i} style={{width:i===step?24:18,height:3,borderRadius:2,background:i<step?"#93C5FD":i===step?"#93C5FD88":"#ffffff15",transition:"all .2s"}}/>)}</div>
       </div>
       <div style={{fontWeight:700,fontSize:14,color:"#e8e8f0",marginBottom:14,marginTop:8}}>{cur.icon} {cur.q}</div>
       <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
